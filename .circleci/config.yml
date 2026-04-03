@@ -22,7 +22,7 @@ jobs:
             - v1-dependencies-
       - run:
           name: Install dependencies
-          command: npm ci || npm install
+          command: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
       - save_cache:
           paths:
             - node_modules
