@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { getErrorMessage } from '../../services/errorUtils';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -45,6 +45,31 @@ const Register: React.FC = () => {
     resolver: yupResolver(registerSchema),
   });
 
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  useEffect(() => {
+    if (submitAttempted && Object.keys(errors).length > 0) {
+      // Focus on the first field with an error
+      if (errors.firstName && firstNameRef.current) {
+        firstNameRef.current.focus();
+      } else if (errors.lastName && lastNameRef.current) {
+        lastNameRef.current.focus();
+      } else if (errors.email && emailRef.current) {
+        emailRef.current.focus();
+      } else if (errors.password && passwordRef.current) {
+        passwordRef.current.focus();
+      } else if (errors.confirmPassword && confirmPasswordRef.current) {
+        confirmPasswordRef.current.focus();
+      }
+      setSubmitAttempted(false);
+    }
+  }, [errors, submitAttempted]);
+
   const onSubmit = async (data: RegisterFormData) => {
     setError(null);
     try {
@@ -53,6 +78,10 @@ const Register: React.FC = () => {
     } catch (err: any) {
       setError(getErrorMessage(err, 'Registration failed. Please try again.'));
     }
+  };
+
+  const onValidationError = () => {
+    setSubmitAttempted(true);
   };
 
   return (
@@ -79,7 +108,7 @@ const Register: React.FC = () => {
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <form onSubmit={handleSubmit(onSubmit, onValidationError)} noValidate>
             <TextField
               margin="normal"
               required
@@ -88,6 +117,7 @@ const Register: React.FC = () => {
               label="First Name"
               autoComplete="given-name"
               autoFocus
+              inputRef={firstNameRef}
               {...register('firstName')}
               error={!!errors.firstName}
               helperText={errors.firstName?.message}
@@ -99,6 +129,7 @@ const Register: React.FC = () => {
               id="lastName"
               label="Last Name"
               autoComplete="family-name"
+              inputRef={lastNameRef}
               {...register('lastName')}
               error={!!errors.lastName}
               helperText={errors.lastName?.message}
@@ -110,6 +141,7 @@ const Register: React.FC = () => {
               id="email"
               label="Email Address"
               autoComplete="email"
+              inputRef={emailRef}
               {...register('email')}
               error={!!errors.email}
               helperText={errors.email?.message}
@@ -122,6 +154,7 @@ const Register: React.FC = () => {
               type="password"
               id="password"
               autoComplete="new-password"
+              inputRef={passwordRef}
               {...register('password')}
               error={!!errors.password}
               helperText={errors.password?.message}
@@ -134,6 +167,7 @@ const Register: React.FC = () => {
               type="password"
               id="confirmPassword"
               autoComplete="new-password"
+              inputRef={confirmPasswordRef}
               {...register('confirmPassword')}
               error={!!errors.confirmPassword}
               helperText={errors.confirmPassword?.message}
