@@ -179,3 +179,6 @@ export interface AnalyticsResponse {
   startDate: string;
   endDate: string;
 }
+
+// Re-export currency types for convenience
+export * from './currency';

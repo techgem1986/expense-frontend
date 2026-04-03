@@ -26,8 +26,10 @@ import { BudgetResponse, BudgetRequest, Category } from '../../types';
 import { budgetAPI, categoryAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
 import BudgetForm from './BudgetForm';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const BudgetList: React.FC = () => {
+  const { formatAmount, convertAmount } = useCurrency();
   const [budgets, setbudgets] = useState<BudgetResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,8 +163,8 @@ const BudgetList: React.FC = () => {
                 <TableRow key={budget.id} hover>
                   <TableCell>{budget.name}</TableCell>
                   <TableCell>{budget.period}</TableCell>
-                  <TableCell>${budget.limitAmount.toFixed(2)}</TableCell>
-                  <TableCell>${budget.currentSpent.toFixed(2)}</TableCell>
+                  <TableCell>{formatAmount(convertAmount(budget.limitAmount))}</TableCell>
+                  <TableCell>{formatAmount(convertAmount(budget.currentSpent))}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Box sx={{ flexGrow: 1 }}>

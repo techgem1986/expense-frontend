@@ -7,6 +7,7 @@ import { TransactionsPage } from '../pages/transactions.page';
 import { BudgetsPage } from '../pages/budgets.page';
 import { RecurringPage } from '../pages/recurring.page';
 import { AlertsPage } from '../pages/alerts.page';
+import { CurrencyPage } from '../pages/currency.page';
 
 // Check if backend API is available
 async function isBackendAvailable(page: any): Promise<boolean> {
@@ -95,6 +96,7 @@ export const test = base.extend<{
   budgetsPage: BudgetsPage;
   recurringPage: RecurringPage;
   alertsPage: AlertsPage;
+  currencyPage: CurrencyPage;
   authenticatedPage: {
     loginPage: LoginPage;
     dashboardPage: DashboardPage;
@@ -134,6 +136,10 @@ export const test = base.extend<{
 
   alertsPage: async ({ page }, use) => {
     await use(new AlertsPage(page));
+  },
+
+  currencyPage: async ({ page }, use) => {
+    await use(new CurrencyPage(page));
   },
 
   // Helper fixture for authenticated sessions

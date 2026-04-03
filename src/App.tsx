@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { CurrencyProvider } from './contexts/CurrencyContext';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import CategoryList from './components/categories/CategoryList';
@@ -65,7 +66,8 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <Router>
+        <CurrencyProvider>
+          <Router>
           <div className="App">
             <Routes>
               {/* Public routes */}
@@ -157,7 +159,8 @@ function App() {
               />
             </Routes>
           </div>
-        </Router>
+          </Router>
+        </CurrencyProvider>
       </AuthProvider>
     </ThemeProvider>
   );

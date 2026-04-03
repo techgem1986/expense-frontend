@@ -26,8 +26,10 @@ import { transactionAPI, categoryAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
 import TransactionForm from './TransactionForm';
 import { Category } from '../../types';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const TransactionList: React.FC = () => {
+  const { formatAmount, convertAmount } = useCurrency();
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,9 +127,9 @@ const TransactionList: React.FC = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatAmount = (amount: number, type: string): string => {
+  const formatTransactionAmount = (amount: number, type: string): string => {
     const prefix = type === 'INCOME' ? '+' : '-';
-    return `${prefix}$${Math.abs(amount).toFixed(2)}`;
+    return `${prefix}${formatAmount(convertAmount(Math.abs(amount)))}`;
   };
 
   if (loading && transactions.length === 0) {
@@ -184,7 +186,7 @@ const TransactionList: React.FC = () => {
                       fontWeight: 'bold',
                     }}
                   >
-                    {formatAmount(transaction.amount, transaction.type)}
+                    {formatTransactionAmount(transaction.amount, transaction.type)}
                   </TableCell>
                   <TableCell align="center">
                     <IconButton

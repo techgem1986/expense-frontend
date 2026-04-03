@@ -27,6 +27,7 @@ import { useLocation } from 'react-router-dom';
 import { analyticsAPI } from '../../services/api';
 import { AnalyticsResponse } from '../../types';
 import { getErrorMessage } from '../../services/errorUtils';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 ChartJS.register(
   CategoryScale,
@@ -41,6 +42,7 @@ ChartJS.register(
 
 const Dashboard: React.FC = () => {
   const location = useLocation();
+  const { formatAmount, convertAmount } = useCurrency();
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +194,7 @@ const Dashboard: React.FC = () => {
               Total Income
             </Typography>
             <Typography variant="h5" sx={{ color: '#4CAF50', fontWeight: 'bold' }}>
-              ${analytics.totalIncome.toFixed(2)}
+              {formatAmount(convertAmount(analytics.totalIncome))}
             </Typography>
           </CardContent>
         </Card>
@@ -202,7 +204,7 @@ const Dashboard: React.FC = () => {
               Total Expenses
             </Typography>
             <Typography variant="h5" sx={{ color: '#F44336', fontWeight: 'bold' }}>
-              ${analytics.totalExpenses.toFixed(2)}
+              {formatAmount(convertAmount(analytics.totalExpenses))}
             </Typography>
           </CardContent>
         </Card>
@@ -218,7 +220,7 @@ const Dashboard: React.FC = () => {
                 fontWeight: 'bold',
               }}
             >
-              ${analytics.netBalance.toFixed(2)}
+              {formatAmount(convertAmount(analytics.netBalance))}
             </Typography>
           </CardContent>
         </Card>
@@ -279,7 +281,7 @@ const Dashboard: React.FC = () => {
                     {item.categoryName}
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    ${item.totalAmount.toFixed(2)}
+                    {formatAmount(convertAmount(item.totalAmount))}
                   </Typography>
                 </Box>
                 <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>

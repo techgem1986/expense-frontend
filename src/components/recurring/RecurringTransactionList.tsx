@@ -23,8 +23,10 @@ import { RecurringTransactionResponse, RecurringTransactionRequest, Category } f
 import { recurringTransactionAPI, categoryAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
 import RecurringTransactionForm from './RecurringTransactionForm';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const RecurringTransactionList: React.FC = () => {
+  const { formatAmount, convertAmount } = useCurrency();
   const [recurring, setRecurring] = useState<RecurringTransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +160,7 @@ const RecurringTransactionList: React.FC = () => {
                 <TableRow key={rec.id} hover>
                   <TableCell>{rec.name}</TableCell>
                   <TableCell>{getCategoryName(rec.category?.id)}</TableCell>
-                  <TableCell>${rec.amount.toFixed(2)}</TableCell>
+                  <TableCell>{formatAmount(convertAmount(rec.amount))}</TableCell>
                   <TableCell>{rec.frequency}</TableCell>
                   <TableCell>{formatDate(rec.nextExecutionDate)}</TableCell>
                   <TableCell>

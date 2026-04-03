@@ -30,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import CurrencySelector from './CurrencySelector';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -89,6 +90,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Expense Management
           </Typography>
+
+          {/* Currency Selector */}
+          <Box sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
+            <CurrencySelector />
+          </Box>
 
           {/* User Menu */}
           {user && (
