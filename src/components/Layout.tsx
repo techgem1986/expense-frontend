@@ -31,6 +31,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CurrencySelector from './CurrencySelector';
+import ThemeToggle from './ThemeToggle';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -90,6 +91,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Expense Management
           </Typography>
+
+          {/* Theme Toggle */}
+          <Box sx={{ mr: 1, display: { xs: 'none', sm: 'block' } }}>
+            <ThemeToggle />
+          </Box>
 
           {/* Currency Selector */}
           <Box sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
