@@ -51,7 +51,7 @@ jobs:
           command: npm install --legacy-peer-deps wait-on
       - run:
           name: Start application server
-          command: npm run start &
+          command: BROWSER=none npm run start
           background: true
       - run:
           name: Wait for application to be ready
