@@ -47,21 +47,15 @@ jobs:
           name: Install Playwright browsers
           command: npx playwright install --with-deps chromium
       - run:
+          name: Install wait-on
+          command: npm install --legacy-peer-deps wait-on
+      - run:
           name: Start application server
           command: npm run start &
           background: true
       - run:
           name: Wait for application to be ready
-          command: |
-            echo "Waiting for application to start..."
-            for i in {1..30}; do
-              if curl -s http://localhost:3000 > /dev/null; then
-                echo "Application is ready!"
-                break
-              fi
-              echo "Still waiting... attempt $i/30"
-              sleep 2
-            done
+          command: npx wait-on http://localhost:3000 --timeout 120000
       - run:
           name: Run Playwright tests
           command: npm run test:e2e
