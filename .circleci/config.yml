@@ -1,0 +1,86 @@
+version: 2.1
+
+orbs:
+  browser-tools: circleci/browser-tools@1.4.8
+  playwright: playwright/browser@2.2.1
+
+executors:
+  node-executor:
+    docker:
+      - image: cimg/node:18.20.4-browsers
+    environment:
+      CI: true
+
+jobs:
+  build:
+    executor: node-executor
+    steps:
+      - checkout
+      - browser-tools/install-chrome
+      - browser-tools/install-browser-tools
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+      - run:
+          name: Build application
+          command: npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - node_modules
+            - build
+
+  test:
+    executor: node-executor
+    steps:
+      - checkout
+      - browser-tools/install-chrome
+      - browser-tools/install-browser-tools
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install Playwright browsers
+          command: npx playwright install --with-deps chromium
+      - run:
+          name: Start application server
+          command: npm run start &
+          background: true
+      - run:
+          name: Wait for application to be ready
+          command: |
+            echo "Waiting for application to start..."
+            for i in {1..30}; do
+              if curl -s http://localhost:3000 > /dev/null; then
+                echo "Application is ready!"
+                break
+              fi
+              echo "Still waiting... attempt $i/30"
+              sleep 2
+            done
+      - run:
+          name: Run Playwright tests
+          command: npm run test:e2e
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: playwright-report
+          destination: playwright-report
+      - store_artifacts:
+          path: test-results
+          destination: test-results
+
+workflows:
+  build-and-test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
