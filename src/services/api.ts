@@ -125,4 +125,32 @@ export const analyticsAPI = {
   getYearToDate: () => api.get('/analytics/year-to-date'),
 };
 
+// Account endpoints
+export const accountAPI = {
+  getAll: (page = 0, size = 20, sort = 'createdAt,desc') =>
+    api.get(`/accounts?page=${page}&size=${size}&sort=${sort}`),
+  getById: (accountId: number) => api.get(`/accounts/${accountId}`),
+  getActive: () => api.get('/accounts/active'),
+  create: (data: {
+    name: string;
+    accountType: string;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    openingBalance: number;
+    description?: string;
+  }) => api.post('/accounts', data),
+  update: (accountId: number, data: {
+    name: string;
+    accountType: string;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    openingBalance: number;
+    description?: string;
+  }) => api.put(`/accounts/${accountId}`, data),
+  delete: (accountId: number) => api.delete(`/accounts/${accountId}`),
+  getTotalBalance: () => api.get('/accounts/total-balance'),
+};
+
 export default api;

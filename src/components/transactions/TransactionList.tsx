@@ -22,10 +22,11 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { TransactionResponse, TransactionRequest } from '../../types';
-import { transactionAPI, categoryAPI } from '../../services/api';
+import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
 import TransactionForm from './TransactionForm';
 import { Category } from '../../types';
+import { Account } from '../../types/account';
 import { useCurrency } from '../../contexts/CurrencyContext';
 
 const TransactionList: React.FC = () => {
@@ -40,6 +41,7 @@ const TransactionList: React.FC = () => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -48,6 +50,19 @@ const TransactionList: React.FC = () => {
       setCategories(data);
     } catch (err: any) {
       console.error('Failed to fetch categories:', err);
+    }
+  }, []);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const response = await accountAPI.getAll();
+      if (response.data.success) {
+        const data = response.data.data.content || response.data.data || [];
+        setAccounts(Array.isArray(data) ? data : []);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch accounts:', err);
+      setAccounts([]);
     }
   }, []);
 
@@ -70,7 +85,8 @@ const TransactionList: React.FC = () => {
   useEffect(() => {
     fetchCategories();
     fetchTransactions();
-  }, [page, fetchCategories, fetchTransactions]);
+    fetchAccounts();
+  }, [page, fetchCategories, fetchTransactions, fetchAccounts]);
 
   const handleOpenForm = (transaction?: TransactionResponse) => {
     if (transaction) {
@@ -221,13 +237,14 @@ const TransactionList: React.FC = () => {
         </Stack>
       )}
 
-      <TransactionForm
-        open={openForm}
-        onClose={handleCloseForm}
-        onSubmit={handleFormSubmit}
-        transaction={editingTransaction}
-        categories={categories}
-      />
+        <TransactionForm
+          open={openForm}
+          onClose={handleCloseForm}
+          onSubmit={handleFormSubmit}
+          transaction={editingTransaction}
+          categories={categories}
+          accounts={accounts}
+        />
 
       <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
         <DialogTitle>Confirm Delete</DialogTitle>

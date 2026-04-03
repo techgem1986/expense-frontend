@@ -80,6 +80,7 @@ const Login: React.FC = () => {
               fullWidth
               id="email"
               label="Email Address"
+              type="email"
               autoComplete="email"
               autoFocus
               {...register('email')}

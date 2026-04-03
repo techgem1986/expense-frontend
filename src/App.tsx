@@ -11,6 +11,7 @@ import RecurringTransactionList from './components/recurring/RecurringTransactio
 import BudgetList from './components/budgets/BudgetList';
 import AlertList from './components/alerts/AlertList';
 import Dashboard from './components/analytics/Dashboard';
+import AccountList from './components/accounts/AccountList';
 import Layout from './components/Layout';
 import './App.css';
 import './theme.css';
@@ -140,6 +141,16 @@ function App() {
                     <ProtectedRoute>
                       <Layout>
                         <CategoryList />
+                      </Layout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/accounts"
+                  element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <AccountList />
                       </Layout>
                     </ProtectedRoute>
                   }

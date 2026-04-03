@@ -68,6 +68,8 @@ export interface TransactionRequest {
   description?: string;
   transactionDate: string;
   categoryId?: number;
+  fromAccountId?: number;
+  toAccountId?: number;
 }
 
 export interface TransactionResponse {
@@ -80,6 +82,8 @@ export interface TransactionResponse {
   transactionDate: string;
   isRecurringInstance: boolean;
   linkedRecurringTransactionId?: number;
+  fromAccount?: { id: number; name: string; accountType: string };
+  toAccount?: { id: number; name: string; accountType: string };
   createdAt: string;
   updatedAt: string;
 }

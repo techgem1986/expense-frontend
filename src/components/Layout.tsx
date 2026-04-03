@@ -27,6 +27,7 @@ import {
   PieChart as PieChartIcon,
   Notifications as NotificationsIcon,
   Analytics as AnalyticsIcon,
+  AccountBalance as AccountBalanceIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -64,6 +65,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Analytics', icon: <AnalyticsIcon />, path: '/dashboard' },
+    { text: 'Accounts', icon: <AccountBalanceIcon />, path: '/accounts' },
     { divider: true },
     { text: 'Transactions', icon: <ReceiptIcon />, path: '/transactions' },
     { text: 'Recurring', icon: <RepeatIcon />, path: '/recurring-transactions' },
