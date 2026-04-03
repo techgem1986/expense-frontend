@@ -149,7 +149,7 @@ const TransactionList: React.FC = () => {
 
       <TableContainer component={Paper}>
         <Table>
-          <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+          <TableHead className="table-header">
             <TableRow>
               <TableCell>Date</TableCell>
               <TableCell>Category</TableCell>

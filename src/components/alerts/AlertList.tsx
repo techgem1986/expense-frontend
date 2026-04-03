@@ -112,7 +112,7 @@ const AlertList: React.FC = () => {
 
       <TableContainer component={Paper}>
         <Table>
-          <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+          <TableHead className="table-header">
             <TableRow>
               <TableCell>Type</TableCell>
               <TableCell>Message</TableCell>
