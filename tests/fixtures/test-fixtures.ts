@@ -94,7 +94,7 @@ export const test = base.extend<{
     dashboardPage: DashboardPage;
   };
 }>({
-  testData: async ({ page: _page, ..._rest }, use) => {
+  testData: async ({}, use) => {
     await use(defaultTestData);
   },
 
