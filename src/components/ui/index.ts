@@ -14,3 +14,15 @@ export {
   TableBodyCell,
 } from './Table';
 export { Modal, ModalFooter } from './Modal';
+export { default as DateRangeFilter } from './DateRangeFilter';
+export {
+  getCurrentMonthStart,
+  getCurrentMonthEnd,
+  getPreviousMonthStart,
+  getPreviousMonthEnd,
+  getNextMonthStart,
+  getNextMonthEnd,
+  getYearToDateStart,
+  getPreviousYearStart,
+  getPreviousYearEnd,
+} from './DateRangeFilter';

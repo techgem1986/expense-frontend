@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Calendar, Filter } from 'lucide-react';
+import { Edit2, Trash2, Calendar, Filter } from 'lucide-react';
 import {
   Card,
   Button,
@@ -9,6 +9,14 @@ import {
   Input,
   Select,
 } from '../ui';
+import DateRangeFilter, {
+  getCurrentMonthStart,
+  getCurrentMonthEnd,
+  getPreviousMonthStart,
+  getPreviousMonthEnd,
+  getNextMonthStart,
+  getNextMonthEnd,
+} from '../ui/DateRangeFilter';
 import { TransactionResponse, TransactionRequest } from '../../types';
 import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
@@ -30,6 +38,12 @@ const TransactionList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+
+  // Date range state - default to current month
+  const [startDate, setStartDate] = useState(getCurrentMonthStart);
+  const [endDate, setEndDate] = useState(getCurrentMonthEnd);
+  const [appliedStartDate, setAppliedStartDate] = useState(getCurrentMonthStart);
+  const [appliedEndDate, setAppliedEndDate] = useState(getCurrentMonthEnd);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -57,7 +71,13 @@ const TransactionList: React.FC = () => {
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await transactionAPI.getAll(page);
+      const response = await transactionAPI.getAll(
+        page,
+        20,
+        'createdAt,desc',
+        appliedStartDate,
+        appliedEndDate
+      );
       if (response.data && response.data.data) {
         setTransactions(response.data.data.content);
         setTotalPages(response.data.data.totalPages);
@@ -68,7 +88,7 @@ const TransactionList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, appliedStartDate, appliedEndDate]);
 
   useEffect(() => {
     fetchCategories();
@@ -136,6 +156,30 @@ const TransactionList: React.FC = () => {
     return `${prefix}${formatAmount(convertAmount(Math.abs(amount)))}`;
   };
 
+  const handleApplyDateRange = () => {
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+    setPage(0); // Reset to first page when applying new date range
+  };
+
+  const handlePreviousMonth = () => {
+    setStartDate(getPreviousMonthStart());
+    setEndDate(getPreviousMonthEnd());
+  };
+
+  const handleNextMonth = () => {
+    setStartDate(getNextMonthStart());
+    setEndDate(getNextMonthEnd());
+  };
+
+  const formatDisplayDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   if (loading && transactions.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -156,12 +200,10 @@ const TransactionList: React.FC = () => {
             Manage your income and expenses
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenForm()}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
-          Add Transaction
-        </Button>
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <Calendar className="w-4 h-4" />
+          <span>{formatDisplayDate(appliedStartDate)} - {formatDisplayDate(appliedEndDate)}</span>
+        </div>
       </div>
 
       {error && (
@@ -169,6 +211,19 @@ const TransactionList: React.FC = () => {
           {error}
         </div>
       )}
+
+      {/* Date Range Filter */}
+      <Card padding="md">
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onApply={handleApplyDateRange}
+          onPreviousMonth={handlePreviousMonth}
+          onNextMonth={handleNextMonth}
+        />
+      </Card>
 
       {/* Filters Card */}
       <Card padding="md">

@@ -20,8 +20,19 @@ import {
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
+  Wallet,
 } from 'lucide-react';
-import { Card, Button, Badge, Input } from '../ui';
+import { Card, Badge } from '../ui';
+import { accountAPI } from '../../services/api';
+import { Account } from '../../types/account';
+import DateRangeFilter, {
+  getCurrentMonthStart,
+  getCurrentMonthEnd,
+  getPreviousMonthStart,
+  getPreviousMonthEnd,
+  getNextMonthStart,
+  getNextMonthEnd,
+} from '../ui/DateRangeFilter';
 import { analyticsAPI } from '../../services/api';
 import { AnalyticsResponse } from '../../types';
 import { getErrorMessage } from '../../services/errorUtils';
@@ -35,14 +46,12 @@ const COLORS = [
 const Dashboard: React.FC = () => {
   const { formatAmount, convertAmount } = useCurrency();
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() - 2);
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  // Date range state - default to current month
+  const [startDate, setStartDate] = useState(getCurrentMonthStart);
+  const [endDate, setEndDate] = useState(getCurrentMonthEnd);
 
   const fetchAnalytics = useCallback(async (start?: string, end?: string) => {
     setLoading(true);
@@ -57,17 +66,48 @@ const Dashboard: React.FC = () => {
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to fetch analytics'));
       setAnalytics(null);
-    } finally {
-      setLoading(false);
+    }
+  }, []);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const response = await accountAPI.getAll();
+      if (response.data && response.data.data) {
+        const data = response.data.data.content || response.data.data || [];
+        setAccounts(Array.isArray(data) ? data : []);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch accounts:', err);
+      setAccounts([]);
     }
   }, []);
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
+    fetchAnalytics(startDate, endDate);
+    fetchAccounts();
+    setLoading(false);
+  }, [fetchAnalytics, fetchAccounts, startDate, endDate]);
 
   const handleApplyDateRange = () => {
     fetchAnalytics(startDate, endDate);
+  };
+
+  const handlePreviousMonth = () => {
+    setStartDate(getPreviousMonthStart());
+    setEndDate(getPreviousMonthEnd());
+  };
+
+  const handleNextMonth = () => {
+    setStartDate(getNextMonthStart());
+    setEndDate(getNextMonthEnd());
+  };
+
+  const formatDisplayDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
   // Prepare chart data
@@ -121,7 +161,7 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
           <Calendar className="w-4 h-4" />
-          <span>{new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}</span>
+          <span>{formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}</span>
         </div>
       </div>
 
@@ -133,25 +173,68 @@ const Dashboard: React.FC = () => {
 
       {/* Date Range Filter */}
       <Card padding="md">
-        <div className="flex flex-col sm:flex-row gap-4 items-end">
-          <Input
-            label="Start Date"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="sm:flex-1"
-          />
-          <Input
-            label="End Date"
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="sm:flex-1"
-          />
-          <Button onClick={handleApplyDateRange} leftIcon={<Calendar className="w-4 h-4" />}>
-            Apply
-          </Button>
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onApply={handleApplyDateRange}
+          onPreviousMonth={handlePreviousMonth}
+          onNextMonth={handleNextMonth}
+        />
+      </Card>
+
+      {/* Account Balances */}
+      <Card padding="md">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              Account Balances
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Current balance across all your accounts
+            </p>
+          </div>
         </div>
+        {accounts.length === 0 ? (
+          <div className="flex items-center justify-center py-4 text-gray-500 dark:text-gray-400">
+            <div className="text-center">
+              <Wallet className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">No accounts found</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {accounts
+              .filter((account) => account.isActive)
+              .map((account) => (
+                <div
+                  key={account.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                      <Wallet className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {account.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-bold ${
+                      account.currentBalance >= 0
+                        ? 'text-success-600 dark:text-success-400'
+                        : 'text-danger-600 dark:text-danger-400'
+                    }`}>
+                      {formatAmount(convertAmount(account.currentBalance))}
+                    </p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
       </Card>
 
       {/* Summary Cards */}
@@ -341,6 +424,7 @@ const Dashboard: React.FC = () => {
           </div>
         </Card>
       </div>
+
 
       {/* Spending Breakdown Details */}
       {spendingByCategory.length > 0 && (

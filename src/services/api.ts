@@ -68,8 +68,15 @@ export const categoryAPI = {
 // Transaction endpoints
 export const transactionAPI = {
   create: (data: any) => api.post('/transactions', data),
-  getAll: (page = 0, size = 20, sort = 'createdAt,desc') =>
-    api.get(`/transactions?page=${page}&size=${size}&sort=${sort}`),
+  getAll: (page = 0, size = 20, sort = 'createdAt,desc', startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    params.append('sort', sort);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return api.get(`/transactions?${params.toString()}`);
+  },
   getById: (transactionId: number) => api.get(`/transactions/${transactionId}`),
   update: (transactionId: number, data: any) => api.put(`/transactions/${transactionId}`, data),
   delete: (transactionId: number) => api.delete(`/transactions/${transactionId}`),
