@@ -104,6 +104,7 @@ npx playwright show-report
 tests/
 ├── pages/                    # Page Object Models
 │   ├── base.page.ts          # Base page with common methods
+│   ├── accounts.page.ts      # Accounts page
 │   ├── login.page.ts         # Login page
 │   ├── register.page.ts      # Register page
 │   ├── dashboard.page.ts     # Dashboard page
@@ -111,9 +112,12 @@ tests/
 │   ├── transactions.page.ts  # Transactions page
 │   ├── budgets.page.ts       # Budgets page
 │   ├── recurring.page.ts     # Recurring transactions page
-│   └── alerts.page.ts        # Alerts page
+│   ├── alerts.page.ts        # Alerts page
+│   └── currency.page.ts      # Currency selector page
 ├── fixtures/                 # Test fixtures and utilities
 │   └── test-fixtures.ts      # Custom fixtures, test data, and extended test object
+├── accounts.spec.ts          # Account management tests
+├── analytics.spec.ts         # Analytics page tests
 ├── auth.spec.ts              # Authentication tests
 ├── categories.spec.ts        # Category management tests
 ├── transactions.spec.ts      # Transaction management tests
@@ -121,6 +125,7 @@ tests/
 ├── recurring.spec.ts         # Recurring transaction tests
 ├── dashboard.spec.ts         # Dashboard/Analytics tests
 ├── alerts.spec.ts            # Alerts tests
+├── currency.spec.ts          # Currency selector tests
 └── README.md                 # This file
 ```
 
@@ -196,6 +201,17 @@ test('should login successfully', async ({ loginPage, page }) => {
 - Charts visibility
 - Data updates after transactions
 - Navigation
+
+### Accounts Tests (`accounts.spec.ts`)
+- Display accounts page
+- Create savings/checking/credit card accounts
+- Edit accounts
+- Delete accounts
+- Cancel operations
+- Display account type badges
+- Display account status
+- Show total balance in header
+- Show summary cards with counts
 
 ### Alerts Tests (`alerts.spec.ts`)
 - Display alerts page

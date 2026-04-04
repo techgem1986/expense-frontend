@@ -8,16 +8,7 @@ import { BudgetsPage } from '../pages/budgets.page';
 import { RecurringPage } from '../pages/recurring.page';
 import { AlertsPage } from '../pages/alerts.page';
 import { CurrencyPage } from '../pages/currency.page';
-
-// Check if backend API is available
-async function isBackendAvailable(page: any): Promise<boolean> {
-  try {
-    const response = await page.request.get('/api/health', { timeout: 5000 });
-    return response.ok();
-  } catch {
-    return false;
-  }
-}
+import { AccountsPage } from '../pages/accounts.page';
 
 // Test data fixtures
 export interface TestData {
@@ -97,12 +88,13 @@ export const test = base.extend<{
   recurringPage: RecurringPage;
   alertsPage: AlertsPage;
   currencyPage: CurrencyPage;
+  accountsPage: AccountsPage;
   authenticatedPage: {
     loginPage: LoginPage;
     dashboardPage: DashboardPage;
   };
 }>({
-  testData: async ({}, use) => {
+  testData: async ({ page: _page, ..._rest }, use) => {
     await use(defaultTestData);
   },
 
@@ -140,6 +132,10 @@ export const test = base.extend<{
 
   currencyPage: async ({ page }, use) => {
     await use(new CurrencyPage(page));
+  },
+
+  accountsPage: async ({ page }, use) => {
+    await use(new AccountsPage(page));
   },
 
   // Helper fixture for authenticated sessions

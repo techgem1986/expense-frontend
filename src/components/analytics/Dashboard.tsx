@@ -21,8 +21,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Wallet,
+  Download,
 } from 'lucide-react';
-import { Card, Badge } from '../ui';
+import { Card, Badge, Button } from '../ui';
 import { accountAPI } from '../../services/api';
 import { Account } from '../../types/account';
 import DateRangeFilter, {
@@ -33,7 +34,7 @@ import DateRangeFilter, {
   getNextMonthStart,
   getNextMonthEnd,
 } from '../ui/DateRangeFilter';
-import { analyticsAPI } from '../../services/api';
+import { analyticsAPI, exportAPI } from '../../services/api';
 import { AnalyticsResponse } from '../../types';
 import { getErrorMessage } from '../../services/errorUtils';
 import { useCurrency } from '../../contexts/CurrencyContext';
@@ -110,6 +111,49 @@ const Dashboard: React.FC = () => {
     });
   };
 
+
+  // Comprehensive Export functionality
+  const handleExportComprehensiveReport = async (format: 'excel' | 'pdf') => {
+    try {
+      // Extract year and month from current date range
+      const currentMonth = new Date(startDate);
+      const yearMonth = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+      
+      let response;
+      if (format === 'excel') {
+        response = await exportAPI.exportComprehensiveReport(yearMonth);
+      } else {
+        response = await exportAPI.exportDashboardPDF(yearMonth);
+      }
+      
+      // Create download link
+      let blob, filename;
+      if (format === 'excel') {
+        blob = new Blob([response.data], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        filename = `comprehensive_financial_report_${yearMonth}.xlsx`;
+      } else {
+        blob = new Blob([response.data], {
+          type: 'application/pdf'
+        });
+        filename = `financial_dashboard_${yearMonth}.pdf`;
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      setError('Failed to export report. Please try again.');
+    }
+  };
+
   // Prepare chart data
   const spendingByCategory = analytics?.spendingByCategory || [];
   const categoryChartData = spendingByCategory.map((s) => ({
@@ -159,9 +203,41 @@ const Dashboard: React.FC = () => {
             Track your income, expenses, and financial goals
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <Calendar className="w-4 h-4" />
-          <span>{formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <Calendar className="w-4 h-4" />
+            <span>{formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative group">
+              <Button
+                variant="primary"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download Report
+              </Button>
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="py-2">
+                  <button
+                    onClick={() => handleExportComprehensiveReport('excel')}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <span className="w-3 h-3 bg-green-500 rounded-sm"></span>
+                    Excel Report
+                  </button>
+                  <button
+                    onClick={() => handleExportComprehensiveReport('pdf')}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <span className="w-3 h-3 bg-red-500 rounded-sm"></span>
+                    PDF Report
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

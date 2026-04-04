@@ -132,6 +132,31 @@ export const analyticsAPI = {
   getYearToDate: () => api.get('/analytics/year-to-date'),
 };
 
+// Export endpoints
+export const exportAPI = {
+  exportMonthlyReport: (yearMonth: string) => 
+    api.get(`/export/report/excel?yearMonth=${yearMonth}`, {
+      responseType: 'blob',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    }),
+  exportComprehensiveReport: (yearMonth: string) => 
+    api.get(`/export/comprehensive/report/excel?yearMonth=${yearMonth}`, {
+      responseType: 'blob',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    }),
+  exportDashboardPDF: (yearMonth: string) => 
+    api.get(`/export/comprehensive/report/pdf?yearMonth=${yearMonth}`, {
+      responseType: 'blob',
+      headers: {
+        'Accept': 'application/pdf'
+      }
+    }),
+};
+
 // Account endpoints
 export const accountAPI = {
   getAll: (page = 0, size = 20, sort = 'createdAt,desc') =>

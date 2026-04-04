@@ -35,6 +35,7 @@ interface TransactionFormProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: TransactionRequest) => void;
+  /** @deprecated This prop is currently not used but reserved for future edit functionality */
   transaction?: TransactionResponse | null;
   categories: Category[];
   accounts: Account[];
@@ -123,7 +124,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     }
 
     const request: TransactionRequest = {
-      amount: data.amount,
+      amount: data.amount.toString(),
       type: data.type as 'INCOME' | 'EXPENSE',
       description: data.description,
       transactionDate: data.transactionDate,
@@ -131,6 +132,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       fromAccountId: data.fromAccountId || undefined,
       toAccountId: showToAccount ? (data.toAccountId || undefined) : undefined,
     };
+    
     onSubmit(request);
   };
 
@@ -179,10 +181,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* From Account - shown only for EXPENSE transactions */}
       {selectedType === 'EXPENSE' && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor="fromAccountId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             From Account *
           </label>
           <select
+            id="fromAccountId"
             {...register('fromAccountId')}
             className={`w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 ${
               errors.fromAccountId
@@ -205,10 +208,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
       {/* Category Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Category
         </label>
         <select
+          id="categoryId"
           {...register('categoryId')}
           className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
         >
@@ -227,10 +231,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* To Account - shown for INCOME transactions or when Money Transfer is selected */}
       {showToAccount && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor="toAccountId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             To Account *
           </label>
           <select
+            id="toAccountId"
             {...register('toAccountId')}
             className={`w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 ${
               errors.toAccountId || accountError
@@ -257,10 +262,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Description
         </label>
         <textarea
+          id="description"
           {...register('description')}
           rows={3}
           className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"

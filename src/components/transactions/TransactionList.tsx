@@ -19,7 +19,7 @@ import DateRangeFilter, {
 } from '../ui/DateRangeFilter';
 import { TransactionResponse, TransactionRequest } from '../../types';
 import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
-import { getErrorMessage } from '../../services/errorUtils';
+import { getErrorMessage, getFieldErrors } from '../../services/errorUtils';
 import TransactionForm from './TransactionForm';
 import { Category } from '../../types';
 import { Account } from '../../types/account';
@@ -120,7 +120,15 @@ const TransactionList: React.FC = () => {
       handleCloseForm();
       fetchTransactions();
     } catch (err: any) {
-      setError(getErrorMessage(err, 'Failed to save transaction'));
+      // Handle field-specific validation errors
+      const fieldErrors = getFieldErrors(err);
+      if (Object.keys(fieldErrors).length > 0) {
+        // If we have field errors, we could pass them to the form
+        // For now, we'll show a general error message
+        setError(getErrorMessage(err, 'Validation failed. Please check your input.'));
+      } else {
+        setError(getErrorMessage(err, 'Failed to save transaction'));
+      }
     }
   };
 
@@ -200,9 +208,20 @@ const TransactionList: React.FC = () => {
             Manage your income and expenses
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <Calendar className="w-4 h-4" />
-          <span>{formatDisplayDate(appliedStartDate)} - {formatDisplayDate(appliedEndDate)}</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <Calendar className="w-4 h-4" />
+            <span>{formatDisplayDate(appliedStartDate)} - {formatDisplayDate(appliedEndDate)}</span>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleOpenForm()}
+            className="flex items-center gap-2"
+          >
+            <span className="hidden sm:inline">Add Transaction</span>
+            <span className="sm:hidden">+</span>
+          </Button>
         </div>
       </div>
 
