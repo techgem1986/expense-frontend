@@ -14,15 +14,17 @@ export class RegisterPage extends BasePage {
 
   constructor(page: Page) {
     super(page, '/register');
-    this.firstNameInput = page.locator('input#firstName');
-    this.lastNameInput = page.locator('input#lastName');
-    this.emailInput = page.locator('input#email');
-    this.passwordInput = page.locator('input#password');
-    this.confirmPasswordInput = page.locator('input#confirmPassword');
+    this.firstNameInput = page.locator('input[name="firstName"], input#firstName');
+    this.lastNameInput = page.locator('input[name="lastName"], input#lastName');
+    this.emailInput = page.locator('input[type="email"]');
+    this.passwordInput = page.locator('input[type="password"]').first();
+    this.confirmPasswordInput = page.locator('input[type="password"]').last();
     this.submitButton = page.locator('button[type="submit"]');
     this.signInLink = page.locator('a[href="/login"]');
-    this.errorMessage = page.locator('.MuiAlert-root.MuiAlert-colorError');
-    this.loadingIndicator = page.locator('.MuiCircularProgress-root');
+    // Updated: Tailwind error message styling
+    this.errorMessage = page.locator('[class*="bg-danger-50"][class*="text-danger-600"]');
+    // Updated: Tailwind loading spinner
+    this.loadingIndicator = page.locator('.animate-spin');
   }
 
   async goto() {

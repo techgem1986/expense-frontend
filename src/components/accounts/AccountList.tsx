@@ -1,38 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Wallet } from 'lucide-react';
 import {
-  Box,
-  Button,
   Card,
-  CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  TextField,
-  Typography,
-  Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Button,
+  Badge,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Alert,
-  Snackbar,
-  Stack,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  AccountBalance as AccountBalanceIcon,
-} from '@mui/icons-material';
+  Modal,
+  Input,
+  Select,
+} from '../ui';
 import { Account, AccountRequest, AccountTypeDisplayNames } from '../../types/account';
 import { accountAPI } from '../../services/api';
 import { useCurrency } from '../../contexts/CurrencyContext';
@@ -48,7 +24,7 @@ const AccountList: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' as 'success' | 'error' });
   const [formData, setFormData] = useState<AccountFormData>({
     name: '',
     accountType: 'SAVINGS',
@@ -130,15 +106,15 @@ const AccountList: React.FC = () => {
     try {
       if (selectedAccount) {
         await accountAPI.update(selectedAccount.id, formData);
-        setSnackbar({ open: true, message: 'Account updated successfully', severity: 'success' });
+        setSnackbar({ open: true, message: 'Account updated successfully', type: 'success' });
       } else {
         await accountAPI.create(formData);
-        setSnackbar({ open: true, message: 'Account created successfully', severity: 'success' });
+        setSnackbar({ open: true, message: 'Account created successfully', type: 'success' });
       }
       handleCloseDialog();
       fetchAccounts();
     } catch (error: any) {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Error saving account', severity: 'error' });
+      setSnackbar({ open: true, message: error.response?.data?.message || 'Error saving account', type: 'error' });
     }
   };
 
@@ -151,12 +127,12 @@ const AccountList: React.FC = () => {
     if (!selectedAccount) return;
     try {
       await accountAPI.delete(selectedAccount.id);
-      setSnackbar({ open: true, message: 'Account deleted successfully', severity: 'success' });
+      setSnackbar({ open: true, message: 'Account deleted successfully', type: 'success' });
       setOpenDeleteDialog(false);
       setSelectedAccount(null);
       fetchAccounts();
     } catch (error: any) {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Error deleting account', severity: 'error' });
+      setSnackbar({ open: true, message: error.response?.data?.message || 'Error deleting account', type: 'error' });
     }
   };
 
@@ -169,271 +145,269 @@ const AccountList: React.FC = () => {
   };
 
   if (loading) {
-    return <Typography>Loading accounts...</Typography>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" component="h1">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Accounts
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Total Balance ({selectedCurrency.code}): {formatCurrency(getTotalBalance())}
-          </Typography>
-        </Box>
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Total Balance ({selectedCurrency.code}): <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(getTotalBalance())}</span>
+          </p>
+        </div>
         <Button
-          variant="contained"
-          startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
+          leftIcon={<Plus className="w-4 h-4" />}
         >
           Add Account
         </Button>
-      </Box>
+      </div>
+
+      {snackbar.open && (
+        <div className={`px-4 py-3 rounded-lg ${
+          snackbar.type === 'success'
+            ? 'bg-success-50 dark:bg-success-900/30 text-success-600 dark:text-success-400 border border-success-200 dark:border-success-800'
+            : 'bg-danger-50 dark:bg-danger-900/30 text-danger-600 dark:text-danger-400 border border-danger-200 dark:border-danger-800'
+        }`}>
+          {snackbar.message}
+        </div>
+      )}
 
       {accounts.length === 0 ? (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 6 }}>
-            <AccountBalanceIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
-              No accounts yet
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        <Card className="text-center py-12">
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
+              <Wallet className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">No accounts yet</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">
               Add your first account to start tracking your finances
-            </Typography>
+            </p>
             <Button
-              variant="contained"
-              startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
+              leftIcon={<Plus className="w-4 h-4" />}
             >
               Add Account
             </Button>
-          </CardContent>
+          </div>
         </Card>
       ) : (
-        <Box>
+        <>
           {/* Summary Cards */}
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-            <Card sx={{ flex: 1 }}>
-              <CardContent>
-                <Typography variant="body2" color="text.secondary">
-                  Total Accounts
-                </Typography>
-                <Typography variant="h4">
-                  {accounts.filter(a => a.isActive).length}
-                </Typography>
-              </CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Accounts</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                {accounts.filter(a => a.isActive).length}
+              </p>
             </Card>
-            <Card sx={{ flex: 1 }}>
-              <CardContent>
-                <Typography variant="body2" color="text.secondary">
-                  Total Balance
-                </Typography>
-                <Typography variant="h4">
-                  {formatCurrency(getTotalBalance())}
-                </Typography>
-              </CardContent>
+            <Card>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Balance</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                {formatCurrency(getTotalBalance())}
+              </p>
             </Card>
-            <Card sx={{ flex: 1 }}>
-              <CardContent>
-                <Typography variant="body2" color="text.secondary">
-                  Account Types
-                </Typography>
-                <Typography variant="h4">
-                  {new Set(accounts.map(a => a.accountType)).size}
-                </Typography>
-              </CardContent>
+            <Card>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Types</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                {new Set(accounts.map(a => a.accountType)).size}
+              </p>
             </Card>
-          </Stack>
+          </div>
 
           {/* Accounts Table */}
-          <TableContainer component={Paper}>
+          <Table.Container>
             <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Account Name</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Bank</TableCell>
-                  <TableCell>Account Number</TableCell>
-                  <TableCell align="right">Opening Balance</TableCell>
-                  <TableCell align="right">Current Balance</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
+              <Table.Head>
+                <Table.Row>
+                  <Table.HeadCell>Account Name</Table.HeadCell>
+                  <Table.HeadCell>Type</Table.HeadCell>
+                  <Table.HeadCell>Bank</Table.HeadCell>
+                  <Table.HeadCell>Account Number</Table.HeadCell>
+                  <Table.HeadCell align="right">Opening Balance</Table.HeadCell>
+                  <Table.HeadCell align="right">Current Balance</Table.HeadCell>
+                  <Table.HeadCell>Status</Table.HeadCell>
+                  <Table.HeadCell align="right">Actions</Table.HeadCell>
+                </Table.Row>
+              </Table.Head>
+              <Table.Body>
                 {accounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell>
-                      <Typography variant="body1" fontWeight="medium">
-                        {account.name}
-                      </Typography>
-                      {account.description && (
-                        <Typography variant="caption" color="text.secondary">
-                          {account.description}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={AccountTypeDisplayNames[account.accountType]}
-                        size="small"
-                        color={account.accountType === 'CASH' ? 'default' : 'primary'}
-                      />
-                    </TableCell>
-                    <TableCell>{account.bankName || '-'}</TableCell>
-                    <TableCell>{account.accountNumber || '-'}</TableCell>
-                    <TableCell align="right">
+                  <Table.Row key={account.id}>
+                    <Table.BodyCell>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
+                        {account.description && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{account.description}</p>
+                        )}
+                      </div>
+                    </Table.BodyCell>
+                    <Table.BodyCell>
+                      <Badge variant="primary">
+                        {AccountTypeDisplayNames[account.accountType]}
+                      </Badge>
+                    </Table.BodyCell>
+                    <Table.BodyCell className="text-gray-500 dark:text-gray-400">
+                      {account.bankName || '-'}
+                    </Table.BodyCell>
+                    <Table.BodyCell className="text-gray-500 dark:text-gray-400">
+                      {account.accountNumber || '-'}
+                    </Table.BodyCell>
+                    <Table.BodyCell align="right" className="text-gray-500 dark:text-gray-400">
                       {formatCurrency(account.openingBalance)}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body1" fontWeight="bold">
-                        {formatCurrency(account.currentBalance)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={account.isActive ? 'Active' : 'Inactive'}
-                        size="small"
-                        color={account.isActive ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenDialog(account)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteClick(account)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
+                    </Table.BodyCell>
+                    <Table.BodyCell align="right" className="font-bold text-gray-900 dark:text-white">
+                      {formatCurrency(account.currentBalance)}
+                    </Table.BodyCell>
+                    <Table.BodyCell>
+                      <Badge variant={account.isActive ? 'success' : 'neutral'}>
+                        {account.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </Table.BodyCell>
+                    <Table.BodyCell align="right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenDialog(account)}
+                          className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors duration-150"
+                          aria-label="Edit account"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(account)}
+                          className="p-2 text-gray-500 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded-lg transition-colors duration-150"
+                          aria-label="Delete account"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </Table.BodyCell>
+                  </Table.Row>
                 ))}
-              </TableBody>
+              </Table.Body>
             </Table>
-          </TableContainer>
-        </Box>
+          </Table.Container>
+        </>
       )}
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {selectedAccount ? 'Edit Account' : 'Add New Account'}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              fullWidth
-              label="Account Name"
-              name="name"
-              value={formData.name}
+      {/* Add/Edit Account Modal */}
+      <Modal
+        isOpen={openDialog}
+        onClose={handleCloseDialog}
+        title={selectedAccount ? 'Edit Account' : 'Add New Account'}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Account Name"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            placeholder="e.g., Main Checking"
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label="Account Type"
+              name="accountType"
+              value={formData.accountType}
               onChange={handleInputChange}
-              required
+              options={Object.entries(AccountTypeDisplayNames).map(([value, label]) => ({
+                value,
+                label,
+              }))}
             />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <FormControl fullWidth required sx={{ flex: 1 }}>
-                <InputLabel>Account Type</InputLabel>
-                <Select
-                  name="accountType"
-                  value={formData.accountType}
-                  label="Account Type"
-                  onChange={(e) => handleInputChange(e as React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { name: string; value: unknown } })}
-                >
-                  {Object.entries(AccountTypeDisplayNames).map(([value, label]) => (
-                    <MenuItem key={value} value={value}>
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                fullWidth
-                label="Opening Balance"
-                name="openingBalance"
-                type="number"
-                value={formData.openingBalance}
-                onChange={handleInputChange}
-                sx={{ flex: 1 }}
-                InputProps={{ inputProps: { min: 0, step: 0.01 } }}
-              />
-            </Stack>
-            <TextField
-              fullWidth
-              label="Bank Name"
-              name="bankName"
-              value={formData.bankName}
+            <Input
+              label="Opening Balance"
+              name="openingBalance"
+              type="number"
+              value={formData.openingBalance}
               onChange={handleInputChange}
+              placeholder="0.00"
             />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                fullWidth
-                label="Account Number"
-                name="accountNumber"
-                value={formData.accountNumber}
-                onChange={handleInputChange}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                fullWidth
-                label="IFSC Code"
-                name="ifscCode"
-                value={formData.ifscCode}
-                onChange={handleInputChange}
-                sx={{ flex: 1 }}
-              />
-            </Stack>
-            <TextField
-              fullWidth
-              label="Description"
+          </div>
+
+          <Input
+            label="Bank Name"
+            name="bankName"
+            value={formData.bankName}
+            onChange={handleInputChange}
+            placeholder="e.g., Chase Bank"
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Account Number"
+              name="accountNumber"
+              value={formData.accountNumber}
+              onChange={handleInputChange}
+              placeholder="****1234"
+            />
+            <Input
+              label="IFSC Code"
+              name="ifscCode"
+              value={formData.ifscCode}
+              onChange={handleInputChange}
+              placeholder="CHAS0001234"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              multiline
               rows={2}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+              placeholder="Optional notes about this account"
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={!formData.name}>
-            {selectedAccount ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={handleCloseDialog}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!formData.name}>
+              {selectedAccount ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-300">
             Are you sure you want to delete the account "{selectedAccount?.name}"?
             This will mark the account as inactive.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} variant="contained" color="error">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

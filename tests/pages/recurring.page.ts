@@ -23,16 +23,21 @@ export class RecurringPage extends BasePage {
     this.addRecurringButton = page.locator('button:has-text("Add Recurring")');
     this.recurringTable = page.locator('table');
     this.noRecurringMessage = page.locator('text=No recurring transactions found');
-    this.dialogTitle = page.locator('.MuiDialogTitle-root');
+    // Updated: Tailwind modal dialog title
+    this.dialogTitle = page.locator('[class*="text-xl"][class*="font-semibold"]').first();
     this.nameInput = page.locator('input[name="name"], input#name');
-    this.categorySelect = page.locator('select[name="categoryId"], .MuiSelect-select').first();
+    // Updated: Tailwind select element
+    this.categorySelect = page.locator('select[name="categoryId"]').first();
     this.amountInput = page.locator('input[name="amount"], input[type="number"]');
-    this.frequencySelect = page.locator('select[name="frequency"], .MuiSelect-select').last();
+    // Updated: Tailwind select element
+    this.frequencySelect = page.locator('select[name="frequency"]').last();
     this.startDateInput = page.locator('input[name="startDate"], input[type="date"]');
-    this.typeSelect = page.locator('select[name="type"], .MuiSelect-select').nth(1);
+    // Updated: Tailwind select element
+    this.typeSelect = page.locator('select[name="type"]').nth(1);
     this.submitButton = page.locator('button[type="submit"]');
     this.cancelButton = page.locator('button:has-text("Cancel")').first();
-    this.errorMessage = page.locator('.MuiAlert-root.MuiAlert-colorError');
+    // Updated: Tailwind error message styling
+    this.errorMessage = page.locator('[class*="bg-danger-50"][class*="text-danger-600"]');
     this.deleteConfirmButton = page.locator('button:has-text("Delete")').last();
     this.deleteCancelButton = page.locator('button:has-text("Cancel")').last();
   }
@@ -72,11 +77,11 @@ export class RecurringPage extends BasePage {
   }
 
   async clickEditRecurring(name: string) {
-    await this.page.locator('tr', { hasText: name }).locator('button[aria-label="edit"]').click();
+    await this.page.locator('tr', { hasText: name }).locator('button[aria-label="Edit recurring transaction"]').click();
   }
 
   async clickDeleteRecurring(name: string) {
-    await this.page.locator('tr', { hasText: name }).locator('button[aria-label="delete"]').click();
+    await this.page.locator('tr', { hasText: name }).locator('button[aria-label="Delete recurring transaction"]').click();
   }
 
   async confirmDelete() {

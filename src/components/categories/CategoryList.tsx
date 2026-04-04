@@ -1,24 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Tags } from 'lucide-react';
 import {
-  Box,
   Button,
-  Typography,
-  Paper,
+  Badge,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-} from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+  Modal,
+} from '../ui';
 import { Category, CategoryUpdateRequest, CategoryFormData } from '../../types';
 import { categoryAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
@@ -42,7 +29,6 @@ const CategoryList: React.FC = () => {
     setLoading(true);
     try {
       const response = await categoryAPI.getAll();
-      // Handle both { data: [...] } and [...]
       if (Array.isArray(response.data)) {
         setCategories(response.data);
       } else if (response.data && Array.isArray(response.data.data)) {
@@ -129,103 +115,145 @@ const CategoryList: React.FC = () => {
     };
   };
 
-  const getTypeColor = (type: string) => {
-    return type === 'INCOME' ? 'success' : 'error';
-  };
-
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <Typography>Loading categories...</Typography>
-      </Box>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
     );
   }
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Categories</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddCategory}>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Categories
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Organize your transactions with custom categories
+          </p>
+        </div>
+        <Button
+          onClick={handleAddCategory}
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
           Add Category
         </Button>
-      </Box>
+      </div>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <div className="bg-danger-50 dark:bg-danger-900/30 border border-danger-200 dark:border-danger-800 text-danger-600 dark:text-danger-400 px-4 py-3 rounded-lg">
           {error}
-        </Alert>
+        </div>
       )}
 
-      <TableContainer component={Paper}>
+      {/* Categories Table */}
+      <Table.Container>
         <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Created At</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {categories.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell>{category.name}</TableCell>
-                <TableCell>{category.description || '-'}</TableCell>
-                <TableCell>
-                  <Chip label={category.type} color={getTypeColor(category.type)} size="small" />
-                </TableCell>
-                <TableCell>{new Date(category.createdAt).toLocaleDateString()}</TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => handleEditCategory(category)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteCategory(category.id)}
-                    color="error"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeadCell>Name</Table.HeadCell>
+              <Table.HeadCell>Description</Table.HeadCell>
+              <Table.HeadCell>Type</Table.HeadCell>
+              <Table.HeadCell>Created At</Table.HeadCell>
+              <Table.HeadCell align="right">Actions</Table.HeadCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body>
+            {categories.length === 0 ? (
+              <Table.Row hoverable={false}>
+                <Table.BodyCell colSpan={5}>
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Tags className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>No categories found</p>
+                    <p className="text-sm mt-1">Create your first category to organize transactions</p>
+                  </div>
+                </Table.BodyCell>
+              </Table.Row>
+            ) : (
+              categories.map((category) => (
+                <Table.Row key={category.id}>
+                  <Table.BodyCell className="font-medium">
+                    {category.name}
+                  </Table.BodyCell>
+                  <Table.BodyCell className="text-gray-500 dark:text-gray-400">
+                    {category.description || '-'}
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <Badge variant={category.type === 'INCOME' ? 'success' : 'danger'}>
+                      {category.type}
+                    </Badge>
+                  </Table.BodyCell>
+                  <Table.BodyCell className="text-gray-500 dark:text-gray-400">
+                    {new Date(category.createdAt).toLocaleDateString()}
+                  </Table.BodyCell>
+                  <Table.BodyCell align="right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleEditCategory(category)}
+                        className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Edit category"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCategory(category.id)}
+                        className="p-2 text-gray-500 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Delete category"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </Table.BodyCell>
+                </Table.Row>
+              ))
+            )}
+          </Table.Body>
         </Table>
-      </TableContainer>
+      </Table.Container>
 
-      {/* Category Form Dialog */}
-      <Dialog open={openForm} onClose={() => setOpenForm(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
-        <DialogContent>
-          {formError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {formError}
-            </Alert>
-          )}
-          <CategoryForm
-            onSubmit={handleFormSubmit}
-            initialData={getInitialFormData()}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Category Form Modal */}
+      <Modal
+        isOpen={openForm}
+        onClose={() => setOpenForm(false)}
+        title={editingCategory ? 'Edit Category' : 'Add New Category'}
+        size="md"
+      >
+        {formError && (
+          <div className="mb-4 bg-danger-50 dark:bg-danger-900/30 border border-danger-200 dark:border-danger-800 text-danger-600 dark:text-danger-400 px-4 py-3 rounded-lg text-sm">
+            {formError}
+          </div>
+        )}
+        <CategoryForm
+          onSubmit={handleFormSubmit}
+          initialData={getInitialFormData()}
+        />
+      </Modal>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-300">
             Are you sure you want to delete this category? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={confirmDeleteCategory} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          </p>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteCategory}>
+              Delete
+            </Button>
+          </Modal.Footer>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

@@ -20,13 +20,16 @@ export class CategoriesPage extends BasePage {
     this.addCategoryButton = page.locator('button:has-text("Add Category")');
     this.categoryTable = page.locator('table');
     this.noCategoriesMessage = page.locator('text=No categories found');
-    this.dialogTitle = page.locator('.MuiDialogTitle-root');
+    // Updated: Tailwind modal dialog title
+    this.dialogTitle = page.locator('[class*="text-xl"][class*="font-semibold"]').first();
     this.nameInput = page.locator('input[name="name"], input#name');
-    this.descriptionInput = page.locator('input[name="description"], input#description, textarea[name="description"]');
-    this.typeSelect = page.locator('select[name="type"], .MuiSelect-select').first();
+    this.descriptionInput = page.locator('textarea[name="description"], input[name="description"]');
+    // Updated: Tailwind select element
+    this.typeSelect = page.locator('select[name="type"]').first();
     this.submitButton = page.locator('button[type="submit"]');
     this.cancelButton = page.locator('button:has-text("Cancel")').first();
-    this.errorMessage = page.locator('.MuiAlert-root.MuiAlert-colorError');
+    // Updated: Tailwind error message styling
+    this.errorMessage = page.locator('[class*="bg-danger-50"][class*="text-danger-600"]');
     this.deleteConfirmButton = page.locator('button:has-text("Delete")').last();
     this.deleteCancelButton = page.locator('button:has-text("Cancel")').last();
   }
@@ -56,11 +59,11 @@ export class CategoriesPage extends BasePage {
   }
 
   async clickEditCategory(categoryName: string) {
-    await this.page.locator('tr', { hasText: categoryName }).locator('button[aria-label="edit"]').click();
+    await this.page.locator('tr', { hasText: categoryName }).locator('button[aria-label="Edit category"]').click();
   }
 
   async clickDeleteCategory(categoryName: string) {
-    await this.page.locator('tr', { hasText: categoryName }).locator('button[aria-label="delete"]').click();
+    await this.page.locator('tr', { hasText: categoryName }).locator('button[aria-label="Delete category"]').click();
   }
 
   async confirmDelete() {

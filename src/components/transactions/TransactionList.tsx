@@ -1,26 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit2, Trash2, Calendar, Filter } from 'lucide-react';
 import {
-  Box,
+  Card,
   Button,
-  Paper,
+  Badge,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-  CircularProgress,
-  Pagination,
-  Stack,
-} from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+  Modal,
+  Input,
+  Select,
+} from '../ui';
 import { TransactionResponse, TransactionRequest } from '../../types';
 import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
@@ -149,94 +137,182 @@ const TransactionList: React.FC = () => {
   };
 
   if (loading && transactions.length === 0) {
-    return <CircularProgress />;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Transactions</h1>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenForm()}>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Transactions
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage your income and expenses
+          </p>
+        </div>
+        <Button
+          onClick={() => handleOpenForm()}
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
           Add Transaction
         </Button>
-      </Box>
+      </div>
 
-      {error && <Alert severity="error">{error}</Alert>}
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead className="table-header">
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell align="right">Type</TableCell>
-              <TableCell align="right">Amount</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {transactions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  No transactions found
-                </TableCell>
-              </TableRow>
-            ) : (
-              transactions.map((transaction) => (
-                <TableRow key={transaction.id} hover>
-                  <TableCell>{formatDate(transaction.transactionDate)}</TableCell>
-                  <TableCell>{getCategoryName(transaction.category?.id)}</TableCell>
-                  <TableCell>{transaction.description}</TableCell>
-                  <TableCell align="right">
-                    <Chip
-                      label={transaction.type}
-                      color={transaction.type === 'INCOME' ? 'success' : 'error'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{
-                      color: transaction.type === 'INCOME' ? '#4caf50' : '#f44336',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {formatTransactionAmount(transaction.amount, transaction.type)}
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenForm(transaction)}
-                      color="primary"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(transaction.id)}
-                      color="error"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {totalPages > 1 && (
-        <Stack sx={{ mt: 3, alignItems: 'center' }}>
-          <Pagination
-            count={totalPages}
-            page={page + 1}
-            onChange={(_, value) => setPage(value - 1)}
-          />
-        </Stack>
+      {error && (
+        <div className="bg-danger-50 dark:bg-danger-900/30 border border-danger-200 dark:border-danger-800 text-danger-600 dark:text-danger-400 px-4 py-3 rounded-lg">
+          {error}
+        </div>
       )}
 
+      {/* Filters Card */}
+      <Card padding="md">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <Input
+              placeholder="Search transactions..."
+              leftIcon={<Filter className="w-4 h-4" />}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Select
+              options={[
+                { value: '', label: 'All Types' },
+                { value: 'INCOME', label: 'Income' },
+                { value: 'EXPENSE', label: 'Expense' },
+              ]}
+            />
+            <Select
+              options={[
+                { value: '', label: 'All Categories' },
+                ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+              ]}
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* Transactions Table */}
+      <Table.Container>
+        <Table>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeadCell>Date</Table.HeadCell>
+              <Table.HeadCell>Category</Table.HeadCell>
+              <Table.HeadCell>Description</Table.HeadCell>
+              <Table.HeadCell align="right">Type</Table.HeadCell>
+              <Table.HeadCell align="right">Amount</Table.HeadCell>
+              <Table.HeadCell align="center">Actions</Table.HeadCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body>
+            {transactions.length === 0 ? (
+              <Table.Row hoverable={false}>
+                <Table.BodyCell colSpan={6}>
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p>No transactions found</p>
+                    <p className="text-sm mt-1">Add your first transaction to get started</p>
+                  </div>
+                </Table.BodyCell>
+              </Table.Row>
+            ) : (
+              transactions.map((transaction) => (
+                <Table.Row key={transaction.id}>
+                  <Table.BodyCell>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      {formatDate(transaction.transactionDate)}
+                    </div>
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <Badge variant="neutral">
+                      {getCategoryName(transaction.category?.id)}
+                    </Badge>
+                  </Table.BodyCell>
+                  <Table.BodyCell className="font-medium">
+                    {transaction.description}
+                  </Table.BodyCell>
+                  <Table.BodyCell align="right">
+                    <Badge
+                      variant={transaction.type === 'INCOME' ? 'success' : 'danger'}
+                    >
+                      {transaction.type}
+                    </Badge>
+                  </Table.BodyCell>
+                  <Table.BodyCell
+                    align="right"
+                    className={`font-bold ${
+                      transaction.type === 'INCOME'
+                        ? 'text-success-600 dark:text-success-400'
+                        : 'text-danger-600 dark:text-danger-400'
+                    }`}
+                  >
+                    {formatTransactionAmount(transaction.amount, transaction.type)}
+                  </Table.BodyCell>
+                  <Table.BodyCell align="center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => handleOpenForm(transaction)}
+                        className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Edit transaction"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(transaction.id)}
+                        className="p-2 text-gray-500 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Delete transaction"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </Table.BodyCell>
+                </Table.Row>
+              ))
+            )}
+          </Table.Body>
+        </Table>
+      </Table.Container>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Page {page + 1} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Form Modal */}
+      <Modal
+        isOpen={openForm}
+        onClose={handleCloseForm}
+        title={editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
+        size="lg"
+      >
         <TransactionForm
           open={openForm}
           onClose={handleCloseForm}
@@ -245,18 +321,30 @@ const TransactionList: React.FC = () => {
           categories={categories}
           accounts={accounts}
         />
+      </Modal>
 
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>Are you sure you want to delete this transaction?</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={confirmDeleteTransaction} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-300">
+            Are you sure you want to delete this transaction? This action cannot be undone.
+          </p>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteTransaction}>
+              Delete
+            </Button>
+          </Modal.Footer>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

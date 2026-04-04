@@ -15,8 +15,10 @@ export class LoginPage extends BasePage {
     this.passwordInput = page.locator('input[type="password"]');
     this.submitButton = page.locator('button[type="submit"]');
     this.signUpLink = page.locator('a[href="/register"]');
-    this.errorMessage = page.locator('.MuiAlert-root.MuiAlert-colorError');
-    this.loadingIndicator = page.locator('.MuiCircularProgress-root');
+    // Updated: Tailwind error message styling
+    this.errorMessage = page.locator('[class*="bg-danger-50"][class*="text-danger-600"]');
+    // Updated: Tailwind loading spinner
+    this.loadingIndicator = page.locator('.animate-spin');
   }
 
   async goto() {

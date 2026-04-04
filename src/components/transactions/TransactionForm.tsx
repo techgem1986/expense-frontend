@@ -1,21 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useForm, SubmitHandler, useWatch } from 'react-hook-form';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Box,
-  FormHelperText,
-} from '@mui/material';
+import { Button, Input, Select } from '../ui';
 import { TransactionRequest, TransactionResponse, Category } from '../../types';
 import { Account } from '../../types/account';
 
@@ -70,7 +57,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     formState: { errors },
     setValue,
     reset,
-    control,
     watch,
   } = useForm<TransactionFormData>({
     resolver: yupResolver(validationSchema),
@@ -85,7 +71,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     },
   });
 
-  const selectedType = useWatch({ control, name: 'type' });
+  const selectedType = watch('type');
   const selectedCategoryId = watch('categoryId');
   const fromAccountId = watch('fromAccountId');
   const toAccountId = watch('toAccountId');
@@ -157,136 +143,146 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     return accounts.filter((acc) => acc.isActive);
   }, [accounts]);
 
+  const isFormValid = !accountError && 
+    !(showToAccount && !toAccountId) && 
+    !(selectedType === 'EXPENSE' && !fromAccountId);
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {transaction ? 'Edit Transaction' : 'Add New Transaction'}
-      </DialogTitle>
-      <DialogContent sx={{ pt: 2 }}>
-        <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <FormControl fullWidth>
-            <InputLabel>Type</InputLabel>
-            <Select
-              {...register('type')}
-              label="Type"
-              defaultValue="EXPENSE"
-            >
-              <MenuItem value="INCOME">Income</MenuItem>
-              <MenuItem value="EXPENSE">Expense</MenuItem>
-            </Select>
-          </FormControl>
+    <div className="space-y-4">
+      <Select
+        label="Type"
+        options={[
+          { value: 'INCOME', label: 'Income' },
+          { value: 'EXPENSE', label: 'Expense' },
+        ]}
+        defaultValue="EXPENSE"
+        error={errors.type?.message}
+        {...register('type')}
+      />
 
-          <TextField
-            {...register('amount')}
-            label="Amount"
-            type="number"
-            inputProps={{ step: '0.01' }}
-            fullWidth
-            error={!!errors.amount}
-            helperText={errors.amount?.message}
-          />
+      <Input
+        label="Amount"
+        type="number"
+        step="0.01"
+        placeholder="0.00"
+        error={errors.amount?.message}
+        {...register('amount')}
+      />
 
-          <TextField
-            {...register('transactionDate')}
-            label="Date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-            error={!!errors.transactionDate}
-            helperText={errors.transactionDate?.message}
-          />
+      <Input
+        label="Date"
+        type="date"
+        error={errors.transactionDate?.message}
+        {...register('transactionDate')}
+      />
 
-          {/* From Account - shown only for EXPENSE transactions */}
+      {/* From Account - shown only for EXPENSE transactions */}
+      {selectedType === 'EXPENSE' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            From Account *
+          </label>
+          <select
+            {...register('fromAccountId')}
+            className={`w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 ${
+              errors.fromAccountId
+                ? 'border-danger-500 dark:border-danger-500'
+                : 'border-gray-300 dark:border-gray-600'
+            }`}
+          >
+            <option value="">Select Account</option>
+            {activeAccounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.accountType})
+              </option>
+            ))}
+          </select>
+          {errors.fromAccountId && (
+            <p className="mt-1 text-xs text-danger-500">{errors.fromAccountId.message}</p>
+          )}
+        </div>
+      )}
+
+      {/* Category Selection */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Category
+        </label>
+        <select
+          {...register('categoryId')}
+          className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+        >
+          <option value="">None</option>
           {selectedType === 'EXPENSE' && (
-            <FormControl fullWidth error={!!errors.fromAccountId}>
-              <InputLabel>From Account *</InputLabel>
-              <Select
-                {...register('fromAccountId')}
-                label="From Account *"
-                defaultValue=""
-              >
-                <MenuItem value="">Select Account</MenuItem>
-                {activeAccounts.map((account) => (
-                  <MenuItem key={account.id} value={account.id}>
-                    {account.name} ({account.accountType})
-                  </MenuItem>
-                ))}
-              </Select>
-              {errors.fromAccountId && (
-                <FormHelperText>{errors.fromAccountId.message}</FormHelperText>
-              )}
-            </FormControl>
+            <option value={MONEY_TRANSFER_CATEGORY_ID}>Money Transfer</option>
           )}
+          {filteredCategories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-          <FormControl fullWidth>
-            <InputLabel>Category</InputLabel>
-            <Select
-              {...register('categoryId')}
-              label="Category"
-              defaultValue=""
-            >
-              <MenuItem value="">None</MenuItem>
-              {selectedType === 'EXPENSE' && (
-                <MenuItem value={MONEY_TRANSFER_CATEGORY_ID}>Money Transfer</MenuItem>
-              )}
-              {filteredCategories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </MenuItem>
+      {/* To Account - shown for INCOME transactions or when Money Transfer is selected */}
+      {showToAccount && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            To Account *
+          </label>
+          <select
+            {...register('toAccountId')}
+            className={`w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 ${
+              errors.toAccountId || accountError
+                ? 'border-danger-500 dark:border-danger-500'
+                : 'border-gray-300 dark:border-gray-600'
+            }`}
+          >
+            <option value="">Select Account</option>
+            {activeAccounts
+              .filter((account) => account.id !== fromAccountId)
+              .map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.accountType})
+                </option>
               ))}
-            </Select>
-          </FormControl>
-
-          {/* To Account - shown for INCOME transactions or when Money Transfer is selected */}
-          {showToAccount && (
-            <FormControl fullWidth error={!!errors.toAccountId || !!accountError}>
-              <InputLabel>To Account *</InputLabel>
-              <Select
-                {...register('toAccountId')}
-                label="To Account *"
-                defaultValue=""
-              >
-                <MenuItem value="">Select Account</MenuItem>
-                {activeAccounts
-                  .filter((account) => account.id !== fromAccountId)
-                  .map((account) => (
-                    <MenuItem key={account.id} value={account.id}>
-                      {account.name} ({account.accountType})
-                    </MenuItem>
-                  ))}
-              </Select>
-              {errors.toAccountId && (
-                <FormHelperText>{errors.toAccountId.message}</FormHelperText>
-              )}
-              {accountError && (
-                <FormHelperText error>{accountError}</FormHelperText>
-              )}
-            </FormControl>
+          </select>
+          {errors.toAccountId && (
+            <p className="mt-1 text-xs text-danger-500">{errors.toAccountId.message}</p>
           )}
+          {accountError && (
+            <p className="mt-1 text-xs text-danger-500">{accountError}</p>
+          )}
+        </div>
+      )}
 
-          <TextField
-            {...register('description')}
-            label="Description"
-            multiline
-            rows={3}
-            fullWidth
-            error={!!errors.description}
-            helperText={errors.description?.message}
-          />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Description
+        </label>
+        <textarea
+          {...register('description')}
+          rows={3}
+          className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+          placeholder="Optional description"
+        />
+        {errors.description && (
+          <p className="mt-1 text-xs text-danger-500">{errors.description.message}</p>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
         <Button 
           onClick={handleSubmit(handleFormSubmit)} 
-          variant="contained" 
-          color="primary"
-          disabled={!!accountError || (showToAccount && !toAccountId) || (selectedType === 'EXPENSE' && !fromAccountId)}
+          disabled={!isFormValid}
         >
           {transaction ? 'Update' : 'Create'}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </div>
+    </div>
   );
 };
 

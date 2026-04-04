@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import Layout from './layouts/Layout';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import CategoryList from './components/categories/CategoryList';
@@ -12,9 +13,7 @@ import BudgetList from './components/budgets/BudgetList';
 import AlertList from './components/alerts/AlertList';
 import Dashboard from './components/analytics/Dashboard';
 import AccountList from './components/accounts/AccountList';
-import Layout from './components/Layout';
-import './App.css';
-import './theme.css';
+import './index.css';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -22,10 +21,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (isLoading) {
     return (
-      <div
-        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
-      >
-        Loading...
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -39,10 +39,11 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div
-        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
-      >
-        Loading...
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -56,107 +57,115 @@ function App() {
       <AuthProvider>
         <CurrencyProvider>
           <Router>
-            <div className="App">
-              <Routes>
-                {/* Public routes */}
-                <Route
-                  path="/login"
-                  element={
-                    <PublicRoute>
-                      <Login />
-                    </PublicRoute>
-                  }
-                />
-                <Route
-                  path="/register"
-                  element={
-                    <PublicRoute>
-                      <Register />
-                    </PublicRoute>
-                  }
-                />
+            <Routes>
+              {/* Public routes */}
+              <Route
+                path="/login"
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/register"
+                element={
+                  <PublicRoute>
+                    <Register />
+                  </PublicRoute>
+                }
+              />
 
-                {/* Protected routes */}
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/dashboard" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <Dashboard />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/transactions"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <TransactionList />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/recurring-transactions"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <RecurringTransactionList />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/budgets"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <BudgetList />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/alerts"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <AlertList />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/categories"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <CategoryList />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/accounts"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <AccountList />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
-            </div>
+              {/* Protected routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/dashboard" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Dashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Dashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/transactions"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <TransactionList />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recurring-transactions"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <RecurringTransactionList />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/budgets"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <BudgetList />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/alerts"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <AlertList />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/categories"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <CategoryList />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/accounts"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <AccountList />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
           </Router>
         </CurrencyProvider>
       </AuthProvider>

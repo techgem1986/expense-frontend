@@ -23,18 +23,23 @@ export class TransactionsPage extends BasePage {
     this.addTransactionButton = page.locator('button:has-text("Add Transaction")');
     this.transactionTable = page.locator('table');
     this.noTransactionsMessage = page.locator('text=No transactions found');
-    this.dialogTitle = page.locator('.MuiDialogTitle-root');
+    // Updated: Tailwind modal dialog title
+    this.dialogTitle = page.locator('[class*="text-xl"][class*="font-semibold"]').first();
     this.dateInput = page.locator('input[name="transactionDate"], input[type="date"]');
-    this.categorySelect = page.locator('select[name="categoryId"], .MuiSelect-select').first();
-    this.descriptionInput = page.locator('input[name="description"], input#description');
-    this.typeSelect = page.locator('select[name="type"], .MuiSelect-select').last();
+    // Updated: Tailwind select element
+    this.categorySelect = page.locator('select[name="categoryId"]').first();
+    this.descriptionInput = page.locator('textarea[name="description"], input[name="description"]');
+    // Updated: Tailwind select element
+    this.typeSelect = page.locator('select[name="type"]').last();
     this.amountInput = page.locator('input[name="amount"], input[type="number"]');
     this.submitButton = page.locator('button[type="submit"]');
     this.cancelButton = page.locator('button:has-text("Cancel")').first();
-    this.errorMessage = page.locator('.MuiAlert-root.MuiAlert-colorError');
+    // Updated: Tailwind error message styling
+    this.errorMessage = page.locator('[class*="bg-danger-50"][class*="text-danger-600"]');
     this.deleteConfirmButton = page.locator('button:has-text("Delete")').last();
     this.deleteCancelButton = page.locator('button:has-text("Cancel")').last();
-    this.pagination = page.locator('.MuiPagination-root');
+    // Updated: Tailwind pagination
+    this.pagination = page.locator('div.flex.gap-2:has(button:has-text("Previous")), div:has(button:has-text("Previous")):has(button:has-text("Next"))');
   }
 
   async goto() {
@@ -70,11 +75,11 @@ export class TransactionsPage extends BasePage {
   }
 
   async clickEditTransaction(description: string) {
-    await this.page.locator('tr', { hasText: description }).locator('button[aria-label="edit"]').click();
+    await this.page.locator('tr', { hasText: description }).locator('button[aria-label="Edit transaction"]').click();
   }
 
   async clickDeleteTransaction(description: string) {
-    await this.page.locator('tr', { hasText: description }).locator('button[aria-label="delete"]').click();
+    await this.page.locator('tr', { hasText: description }).locator('button[aria-label="Delete transaction"]').click();
   }
 
   async confirmDelete() {
@@ -87,8 +92,26 @@ export class TransactionsPage extends BasePage {
   }
 
   async goToPage(pageNum: number) {
-    await this.pagination.locator(`button[aria-label="Go to page ${pageNum}"]`).click();
-    await this.waitForPageLoad();
+    // Updated: Tailwind pagination uses Previous/Next buttons
+    // Navigate to the desired page by clicking Next multiple times or use direct logic
+    const currentPage = await this.getCurrentPage();
+    if (pageNum > currentPage) {
+      for (let i = currentPage; i < pageNum; i++) {
+        await this.pagination.locator('button:has-text("Next")').click();
+        await this.waitForPageLoad();
+      }
+    } else if (pageNum < currentPage) {
+      for (let i = currentPage; i > pageNum; i--) {
+        await this.pagination.locator('button:has-text("Previous")').click();
+        await this.waitForPageLoad();
+      }
+    }
+  }
+
+  async getCurrentPage(): Promise<number> {
+    const pageText = await this.pagination.locator('p').first().textContent();
+    const match = pageText?.match(/Page (\d+)/);
+    return match ? parseInt(match[1]) : 1;
   }
 
   async expectTransactionInList(description: string) {

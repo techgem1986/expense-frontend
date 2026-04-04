@@ -99,6 +99,8 @@ export interface RecurringTransactionRequest {
   startDate: string;
   endDate?: string;
   categoryId?: number;
+  fromAccountId?: number;
+  toAccountId?: number;
 }
 
 export interface RecurringTransactionResponse {
@@ -115,6 +117,8 @@ export interface RecurringTransactionResponse {
   endDate?: string;
   nextExecutionDate: string;
   isActive: boolean;
+  fromAccount?: { id: number; name: string; accountType: string };
+  toAccount?: { id: number; name: string; accountType: string };
   createdAt: string;
   updatedAt: string;
 }

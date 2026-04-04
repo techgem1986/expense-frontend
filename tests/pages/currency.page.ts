@@ -7,8 +7,10 @@ export class CurrencyPage extends BasePage {
 
   constructor(page: Page) {
     super(page, '/dashboard');
+    // Updated: Tailwind currency selector
     this.currencySelector = page.locator('label:has-text("Currency")').locator('xpath=..');
-    this.currencyDropdown = page.locator('[role="combobox"]').filter({ hasText: /USD|EUR|GBP|JPY|INR|AUD|CAD|CHF|CNY|SGD|AED/ }).first();
+    // Updated: Tailwind select element
+    this.currencyDropdown = page.locator('select[name="currency"], select').filter({ hasText: /USD|EUR|GBP|JPY|INR|AUD|CAD|CHF|CNY|SGD|AED/ }).first();
   }
 
   async openCurrencySelector() {
@@ -16,11 +18,11 @@ export class CurrencyPage extends BasePage {
   }
 
   async selectCurrency(currencyCode: string) {
-    await this.page.locator(`[role="option"]:has-text("${currencyCode}")`).click();
+    await this.currencyDropdown.selectOption(currencyCode);
   }
 
   async getCurrentCurrency(): Promise<string> {
-    const selectedOption = await this.currencySelector.locator('fieldset legend').textContent();
+    const selectedOption = await this.currencyDropdown.inputValue();
     return selectedOption || '';
   }
 

@@ -1,46 +1,175 @@
-# Getting Started with Create React App
+# ExpenseHub - Expense Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A premium enterprise admin dashboard for managing expenses, built with React and Tailwind CSS.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Dashboard & Analytics** - Financial insights with interactive charts (Recharts)
+- **Transaction Management** - Create, edit, delete, and filter transactions
+- **Account Management** - Track multiple accounts with balance monitoring
+- **Category Management** - Organize transactions with custom income/expense categories
+- **Budget Tracking** - Set spending limits with progress visualization
+- **Recurring Transactions** - Automate regular income and expense entries
+- **Alerts & Notifications** - Stay informed about important financial events
+- **Dark Mode** - Full dark theme support with system preference detection
+- **Multi-Currency Support** - Handle transactions in different currencies
 
-### `npm start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **React 18** - UI framework with TypeScript
+- **Tailwind CSS 3** - Utility-first CSS framework
+- **React Router 6** - Client-side routing
+- **Recharts** - Data visualization (charts)
+- **Lucide React** - Icon library
+- **React Hook Form** - Form management
+- **Yup** - Schema validation
+- **Playwright** - End-to-end testing
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Project Structure
 
-### `npm test`
+```
+src/
+├── components/
+│   ├── ui/           # Reusable UI components
+│   │   ├── Badge.tsx
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── Input.tsx
+│   │   ├── Modal.tsx
+│   │   ├── Select.tsx
+│   │   ├── Table.tsx
+│   │   └── index.ts
+│   ├── accounts/     # Account management
+│   ├── alerts/       # Alerts & notifications
+│   ├── analytics/    # Dashboard & analytics
+│   ├── auth/         # Login & registration
+│   ├── budgets/      # Budget tracking
+│   ├── categories/   # Category management
+│   ├── recurring/    # Recurring transactions
+│   └── transactions/ # Transaction management
+├── layouts/          # Layout components
+│   ├── Layout.tsx
+│   ├── Sidebar.tsx
+│   └── Topbar.tsx
+├── contexts/         # React contexts
+│   ├── AuthContext.tsx
+│   ├── CurrencyContext.tsx
+│   └── ThemeContext.tsx
+├── hooks/            # Custom hooks
+├── services/         # API services
+├── types/            # TypeScript types
+└── App.tsx
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Getting Started
 
-### `npm run build`
+### Prerequisites
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Node.js 18+ 
+- npm or yarn
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Installation
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+# Clone the repository
+git clone https://github.com/techgem1986/expense-frontend.git
+cd expense-frontend
 
-### `npm run eject`
+# Install dependencies
+npm install
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+# Start development server
+npm start
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The app will be available at [http://localhost:3000](http://localhost:3000).
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Available Scripts
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start development server |
+| `npm run build` | Build for production |
+| `npm test` | Run tests |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format code with Prettier |
 
-## Learn More
+### Running Tests
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+# Run unit tests
+npm test
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Run E2E tests with Playwright
+npx playwright test
+
+# Run E2E tests with UI
+npx playwright test --ui
+```
+
+## Design System
+
+### Colors
+
+| Name | Usage |
+|------|-------|
+| `primary` | Primary actions, links, accents (blue) |
+| `success` | Positive values, income (green) |
+| `warning` | Warnings, alerts (amber) |
+| `danger` | Negative values, expenses, errors (red) |
+| `neutral` | Secondary information (gray) |
+
+### Components
+
+The project includes a set of reusable UI components in `src/components/ui/`:
+
+- **Card** - Container with header, content, and footer sections
+- **Button** - Primary, secondary, and danger variants with loading states
+- **Input** - Text inputs with labels, icons, and validation
+- **Select** - Dropdown selects with options
+- **Table** - Data tables with sorting, pagination, and row actions
+- **Badge** - Status indicators with contextual colors
+- **Modal** - Dialog overlays for forms and confirmations
+
+### Dark Mode
+
+The application supports dark mode with a toggle in the top navigation bar. Theme preference is persisted in localStorage and respects system preferences.
+
+## API Integration
+
+The application communicates with a REST API. Configure the API base URL in `src/services/api.ts`:
+
+```typescript
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `REACT_APP_API_URL` | Backend API base URL |
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Acknowledgments
+
+- Design inspired by Adminty dashboard UI
+- Icons by [Lucide](https://lucide.dev/)
+- Charts by [Recharts](https://recharts.org/)

@@ -17,8 +17,10 @@ export class AlertsPage extends BasePage {
     this.noAlertsMessage = page.locator('text=No alerts found');
     this.deleteConfirmButton = page.locator('button:has-text("Delete")').last();
     this.deleteCancelButton = page.locator('button:has-text("Cancel")').last();
-    this.errorMessage = page.locator('.MuiAlert-root.MuiAlert-colorError');
-    this.pagination = page.locator('.MuiPagination-root');
+    // Updated: Tailwind error message styling
+    this.errorMessage = page.locator('[class*="bg-danger-50"][class*="text-danger-600"]');
+    // Updated: Tailwind pagination
+    this.pagination = page.locator('div.flex.gap-2:has(button:has-text("Previous")), div:has(button:has-text("Previous")):has(button:has-text("Next"))');
   }
 
   async goto() {
@@ -32,12 +34,12 @@ export class AlertsPage extends BasePage {
   }
 
   async clickMarkAsRead(alertMessage: string) {
-    await this.page.locator('tr', { hasText: alertMessage }).locator('button[title="Mark as read"]').click();
+    await this.page.locator('tr', { hasText: alertMessage }).locator('button[aria-label="Mark as read"]').click();
     await this.waitForPageLoad();
   }
 
   async clickDeleteAlert(alertMessage: string) {
-    await this.page.locator('tr', { hasText: alertMessage }).locator('button[aria-label="delete"]').click();
+    await this.page.locator('tr', { hasText: alertMessage }).locator('button[aria-label="Delete alert"]').click();
   }
 
   async confirmDelete() {
@@ -50,8 +52,25 @@ export class AlertsPage extends BasePage {
   }
 
   async goToPage(pageNum: number) {
-    await this.pagination.locator(`button[aria-label="Go to page ${pageNum}"]`).click();
-    await this.waitForPageLoad();
+    // Updated: Tailwind pagination uses Previous/Next buttons
+    const currentPage = await this.getCurrentPage();
+    if (pageNum > currentPage) {
+      for (let i = currentPage; i < pageNum; i++) {
+        await this.pagination.locator('button:has-text("Next")').click();
+        await this.waitForPageLoad();
+      }
+    } else if (pageNum < currentPage) {
+      for (let i = currentPage; i > pageNum; i--) {
+        await this.pagination.locator('button:has-text("Previous")').click();
+        await this.waitForPageLoad();
+      }
+    }
+  }
+
+  async getCurrentPage(): Promise<number> {
+    const pageText = await this.pagination.locator('p').first().textContent();
+    const match = pageText?.match(/Page (\d+)/);
+    return match ? parseInt(match[1]) : 1;
   }
 
   async expectAlertInList(message: string) {

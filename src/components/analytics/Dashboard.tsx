@@ -1,47 +1,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box,
-  Paper,
-  Typography,
-  Alert,
-  CircularProgress,
-  Stack,
-  TextField,
-  Button,
-  Card,
-  CardContent,
-} from '@mui/material';
-import { Doughnut, Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-} from 'chart.js';
-import { useLocation } from 'react-router-dom';
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  PieChart as PieChartIcon,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
+} from 'lucide-react';
+import { Card, Button, Badge, Input } from '../ui';
 import { analyticsAPI } from '../../services/api';
 import { AnalyticsResponse } from '../../types';
 import { getErrorMessage } from '../../services/errorUtils';
 import { useCurrency } from '../../contexts/CurrencyContext';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend,
-);
+const COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+];
 
 const Dashboard: React.FC = () => {
-  const location = useLocation();
   const { formatAmount, convertAmount } = useCurrency();
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,226 +64,320 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [fetchAnalytics, location.pathname]);
+  }, [fetchAnalytics]);
 
   const handleApplyDateRange = () => {
     fetchAnalytics(startDate, endDate);
   };
 
+  // Prepare chart data
+  const spendingByCategory = analytics?.spendingByCategory || [];
+  const categoryChartData = spendingByCategory.map((s) => ({
+    name: s.categoryName,
+    value: s.totalAmount,
+  }));
+
+  const monthlyData = analytics?.monthlySpending || [];
+  const monthlyChartData = monthlyData.map((m) => ({
+    month: m.month,
+    Income: m.income,
+    Expenses: m.expenses,
+  }));
+
+  const saveRate = analytics?.totalIncome && analytics.totalIncome > 0
+    ? (((analytics.totalIncome - analytics.totalExpenses) / analytics.totalIncome) * 100).toFixed(1)
+    : '0';
+
   if (loading && !analytics) {
-    return <CircularProgress />;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   if (!analytics) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">No analytics data available.</Alert>
-      </Box>
+      <Card className="p-6">
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          <p className="text-lg font-medium">No analytics data available</p>
+          <p className="text-sm mt-2">Start adding transactions to see your financial insights</p>
+        </div>
+      </Card>
     );
   }
 
-  // Prepare chart data
-  const spendingByCategory = analytics.spendingByCategory || [];
-  const categoryChartData = {
-    labels: spendingByCategory.map((s) => s.categoryName),
-    datasets: [
-      {
-        label: 'Spending by Category',
-        data: spendingByCategory.map((s) => s.totalAmount),
-        backgroundColor: [
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0',
-          '#9966FF',
-          '#FF9F40',
-          '#FF6384',
-          '#C9CBCF',
-        ],
-        borderColor: [
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0',
-          '#9966FF',
-          '#FF9F40',
-          '#FF6384',
-          '#C9CBCF',
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const monthlyData = analytics.monthlySpending || [];
-  const monthlyChartData = {
-    labels: monthlyData.map((m) => m.month),
-    datasets: [
-      {
-        label: 'Income',
-        data: monthlyData.map((m) => m.income),
-        backgroundColor: '#4CAF50',
-        borderColor: '#4CAF50',
-        borderWidth: 1,
-      },
-      {
-        label: 'Expenses',
-        data: monthlyData.map((m) => m.expenses),
-        backgroundColor: '#F44336',
-        borderColor: '#F44336',
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-    },
-  };
-
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Financial Dashboard
-      </Typography>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Financial Dashboard
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Track your income, expenses, and financial goals
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <Calendar className="w-4 h-4" />
+          <span>{new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}</span>
+        </div>
+      </div>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <div className="bg-danger-50 dark:bg-danger-900/30 border border-danger-200 dark:border-danger-800 text-danger-600 dark:text-danger-400 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
 
       {/* Date Range Filter */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <TextField
+      <Card padding="md">
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <Input
             label="Start Date"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
+            className="sm:flex-1"
           />
-          <TextField
+          <Input
             label="End Date"
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
+            className="sm:flex-1"
           />
-          <Button variant="contained" onClick={handleApplyDateRange}>
+          <Button onClick={handleApplyDateRange} leftIcon={<Calendar className="w-4 h-4" />}>
             Apply
           </Button>
-        </Stack>
-      </Paper>
+        </div>
+      </Card>
 
       {/* Summary Cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 3, mb: 3 }}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Total Income
-            </Typography>
-            <Typography variant="h5" sx={{ color: '#4CAF50', fontWeight: 'bold' }}>
-              {formatAmount(convertAmount(analytics.totalIncome))}
-            </Typography>
-          </CardContent>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Income */}
+        <Card hover className="relative overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Total Income
+              </p>
+              <p className="mt-2 text-2xl font-bold text-success-600 dark:text-success-400">
+                {formatAmount(convertAmount(analytics.totalIncome))}
+              </p>
+            </div>
+            <div className="p-3 bg-success-100 dark:bg-success-900/30 rounded-xl">
+              <TrendingUp className="w-6 h-6 text-success-600 dark:text-success-400" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-sm text-success-600 dark:text-success-400">
+            <ArrowUpRight className="w-4 h-4" />
+            <span>Income</span>
+          </div>
         </Card>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Total Expenses
-            </Typography>
-            <Typography variant="h5" sx={{ color: '#F44336', fontWeight: 'bold' }}>
-              {formatAmount(convertAmount(analytics.totalExpenses))}
-            </Typography>
-          </CardContent>
+
+        {/* Total Expenses */}
+        <Card hover className="relative overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Total Expenses
+              </p>
+              <p className="mt-2 text-2xl font-bold text-danger-600 dark:text-danger-400">
+                {formatAmount(convertAmount(analytics.totalExpenses))}
+              </p>
+            </div>
+            <div className="p-3 bg-danger-100 dark:bg-danger-900/30 rounded-xl">
+              <TrendingDown className="w-6 h-6 text-danger-600 dark:text-danger-400" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-sm text-danger-600 dark:text-danger-400">
+            <ArrowDownRight className="w-4 h-4" />
+            <span>Expenses</span>
+          </div>
         </Card>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Net Balance
-            </Typography>
-            <Typography
-              variant="h5"
-              sx={{
-                color: analytics.netBalance >= 0 ? '#4CAF50' : '#F44336',
-                fontWeight: 'bold',
-              }}
-            >
-              {formatAmount(convertAmount(analytics.netBalance))}
-            </Typography>
-          </CardContent>
+
+        {/* Net Balance */}
+        <Card hover className="relative overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Net Balance
+              </p>
+              <p className={`mt-2 text-2xl font-bold ${
+                analytics.netBalance >= 0
+                  ? 'text-success-600 dark:text-success-400'
+                  : 'text-danger-600 dark:text-danger-400'
+              }`}>
+                {formatAmount(convertAmount(analytics.netBalance))}
+              </p>
+            </div>
+            <div className={`p-3 rounded-xl ${
+              analytics.netBalance >= 0
+                ? 'bg-success-100 dark:bg-success-900/30'
+                : 'bg-danger-100 dark:bg-danger-900/30'
+            }`}>
+              <DollarSign className={`w-6 h-6 ${
+                analytics.netBalance >= 0
+                  ? 'text-success-600 dark:text-success-400'
+                  : 'text-danger-600 dark:text-danger-400'
+              }`} />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+            <span>Balance</span>
+          </div>
         </Card>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>
-              Save Rate
-            </Typography>
-            <Typography variant="h5" sx={{ color: '#2196F3', fontWeight: 'bold' }}>
-              {analytics.totalIncome > 0
-                ? (((analytics.totalIncome - analytics.totalExpenses) / analytics.totalIncome) * 100).toFixed(1)
-                : '0'}
-              %
-            </Typography>
-          </CardContent>
+
+        {/* Save Rate */}
+        <Card hover className="relative overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Save Rate
+              </p>
+              <p className="mt-2 text-2xl font-bold text-primary-600 dark:text-primary-400">
+                {saveRate}%
+              </p>
+            </div>
+            <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
+              <PieChartIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+            <span>Savings Rate</span>
+          </div>
         </Card>
-      </Box>
+      </div>
 
       {/* Charts */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Spending by Category
-          </Typography>
-          {spendingByCategory.length > 0 ? (
-            <Box sx={{ position: 'relative', height: 300 }}>
-              <Doughnut data={categoryChartData} options={chartOptions} />
-            </Box>
-          ) : (
-            <Typography color="textSecondary">No data available</Typography>
-          )}
-        </Paper>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Monthly Income vs Expenses
-          </Typography>
-          {monthlyData.length > 0 ? (
-            <Box sx={{ position: 'relative', height: 300 }}>
-              <Bar data={monthlyChartData} options={chartOptions} />
-            </Box>
-          ) : (
-            <Typography color="textSecondary">No data available</Typography>
-          )}
-        </Paper>
-      </Box>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Spending by Category - Pie Chart */}
+        <Card>
+          <Card.Header
+            title="Spending by Category"
+            subtitle="Distribution of expenses across categories"
+          />
+          <div className="h-80">
+            {categoryChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    labelLine={{ stroke: '#6b7280', strokeWidth: 1 }}
+                  >
+                    {categoryChartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => formatAmount(convertAmount(Number(value) || 0))}
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#fff',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                No data available
+              </div>
+            )}
+          </div>
+        </Card>
 
-      {/* Spending by Category Details */}
+        {/* Monthly Income vs Expenses - Bar Chart */}
+        <Card>
+          <Card.Header
+            title="Monthly Income vs Expenses"
+            subtitle="Comparison over the last 12 months"
+          />
+          <div className="h-80">
+            {monthlyChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickLine={{ stroke: '#6b7280' }}
+                  />
+                  <YAxis
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickLine={{ stroke: '#6b7280' }}
+                    axisLine={{ stroke: '#6b7280' }}
+                    tickFormatter={(value) => formatAmount(convertAmount(value))}
+                  />
+                  <Tooltip
+                    formatter={(value) => formatAmount(convertAmount(Number(value) || 0))}
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#fff',
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                No data available
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Spending Breakdown Details */}
       {spendingByCategory.length > 0 && (
-        <Paper sx={{ p: 2, mt: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Spending Breakdown
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+        <Card>
+          <Card.Header
+            title="Spending Breakdown"
+            subtitle="Detailed view of expenses by category"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {spendingByCategory.map((item, index) => (
-              <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">
-                    {item.categoryName}
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    {formatAmount(convertAmount(item.totalAmount))}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
+              <div
+                key={index}
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {item.categoryName}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatAmount(convertAmount(item.totalAmount))}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="primary">
                   {(item.percentage ?? 0).toFixed(1)}%
-                </Typography>
-              </Box>
+                </Badge>
+              </div>
             ))}
-          </Box>
-        </Paper>
+          </div>
+        </Card>
       )}
-    </Box>
+    </div>
   );
 };
 

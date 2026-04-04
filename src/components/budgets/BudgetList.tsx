@@ -1,27 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit2, Trash2, PieChart } from 'lucide-react';
 import {
-  Box,
   Button,
-  Paper,
+  Badge,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-  CircularProgress,
-  LinearProgress,
-  Pagination,
-  Stack,
-} from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+  Modal,
+} from '../ui';
 import { BudgetResponse, BudgetRequest, Category } from '../../types';
 import { budgetAPI, categoryAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
@@ -117,128 +101,195 @@ const BudgetList: React.FC = () => {
     }
   };
 
-  const getProgressColor = (percentage: number): 'success' | 'warning' | 'error' => {
-    if (percentage >= 100) return 'error';
-    if (percentage >= 80) return 'warning';
-    return 'success';
-  };
 
   if (loading && budgets.length === 0) {
-    return <CircularProgress />;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Budgets</h1>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenForm()}>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Budgets
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Track and manage your spending limits
+          </p>
+        </div>
+        <Button
+          onClick={() => handleOpenForm()}
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
           Add Budget
         </Button>
-      </Box>
+      </div>
 
-      {error && <Alert severity="error">{error}</Alert>}
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead className="table-header">
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Period</TableCell>
-              <TableCell>Limit</TableCell>
-              <TableCell>Spent</TableCell>
-              <TableCell>Progress</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {budgets.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                  No budgets found
-                </TableCell>
-              </TableRow>
-            ) : (
-              budgets.map((budget) => (
-                <TableRow key={budget.id} hover>
-                  <TableCell>{budget.name}</TableCell>
-                  <TableCell>{budget.period}</TableCell>
-                  <TableCell>{formatAmount(convertAmount(budget.limitAmount))}</TableCell>
-                  <TableCell>{formatAmount(convertAmount(budget.currentSpent))}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min(budget.spentPercentage, 100)}
-                          color={getProgressColor(budget.spentPercentage)}
-                          sx={{ height: 8, borderRadius: 4 }}
-                        />
-                      </Box>
-                      <Box sx={{ minWidth: 35 }}>
-                        {budget.spentPercentage.toFixed(1)}%
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={budget.isOverBudget ? 'Over Budget' : 'OK'}
-                      color={budget.isOverBudget ? 'error' : 'success'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenForm(budget)}
-                      color="primary"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(budget.id)}
-                      color="error"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {totalPages > 1 && (
-        <Stack sx={{ mt: 3, alignItems: 'center' }}>
-          <Pagination
-            count={totalPages}
-            page={page + 1}
-            onChange={(_, value) => setPage(value - 1)}
-          />
-        </Stack>
+      {error && (
+        <div className="bg-danger-50 dark:bg-danger-900/30 border border-danger-200 dark:border-danger-800 text-danger-600 dark:text-danger-400 px-4 py-3 rounded-lg">
+          {error}
+        </div>
       )}
 
-      <BudgetForm
-        open={openForm}
-        onClose={handleCloseForm}
-        onSubmit={handleFormSubmit}
-        budget={editingBudget}
-        categories={categories}
-      />
+      {/* Budgets Table */}
+      <Table.Container>
+        <Table>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeadCell>Name</Table.HeadCell>
+              <Table.HeadCell>Period</Table.HeadCell>
+              <Table.HeadCell>Limit</Table.HeadCell>
+              <Table.HeadCell>Spent</Table.HeadCell>
+              <Table.HeadCell>Progress</Table.HeadCell>
+              <Table.HeadCell>Status</Table.HeadCell>
+              <Table.HeadCell align="center">Actions</Table.HeadCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body>
+            {budgets.length === 0 ? (
+              <Table.Row hoverable={false}>
+                <Table.BodyCell colSpan={7}>
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <PieChart className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>No budgets found</p>
+                    <p className="text-sm mt-1">Create your first budget to track spending</p>
+                  </div>
+                </Table.BodyCell>
+              </Table.Row>
+            ) : (
+              budgets.map((budget) => (
+                <Table.Row key={budget.id}>
+                  <Table.BodyCell className="font-medium">
+                    {budget.name}
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <Badge variant="neutral">{budget.period}</Badge>
+                  </Table.BodyCell>
+                  <Table.BodyCell className="font-semibold">
+                    {formatAmount(convertAmount(budget.limitAmount))}
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    {formatAmount(convertAmount(budget.currentSpent))}
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${
+                            budget.spentPercentage >= 100
+                              ? 'bg-danger-500'
+                              : budget.spentPercentage >= 80
+                              ? 'bg-warning-500'
+                              : 'bg-success-500'
+                          }`}
+                          style={{ width: `${Math.min(budget.spentPercentage, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[40px] text-right">
+                        {budget.spentPercentage.toFixed(1)}%
+                      </span>
+                    </div>
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <Badge variant={budget.isOverBudget ? 'danger' : 'success'}>
+                      {budget.isOverBudget ? 'Over Budget' : 'OK'}
+                    </Badge>
+                  </Table.BodyCell>
+                  <Table.BodyCell align="center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => handleOpenForm(budget)}
+                        className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Edit budget"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(budget.id)}
+                        className="p-2 text-gray-500 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Delete budget"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </Table.BodyCell>
+                </Table.Row>
+              ))
+            )}
+          </Table.Body>
+        </Table>
+      </Table.Container>
 
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>Are you sure you want to delete this budget?</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={confirmDeleteBudget} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Page {page + 1} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Budget Form Modal */}
+      <Modal
+        isOpen={openForm}
+        onClose={handleCloseForm}
+        title={editingBudget ? 'Edit Budget' : 'Add Budget'}
+        size="lg"
+      >
+        <BudgetForm
+          open={openForm}
+          onClose={handleCloseForm}
+          onSubmit={handleFormSubmit}
+          budget={editingBudget}
+          categories={categories}
+        />
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-300">
+            Are you sure you want to delete this budget? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteBudget}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

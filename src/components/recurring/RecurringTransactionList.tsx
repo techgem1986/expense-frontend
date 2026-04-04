@@ -1,26 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Repeat, RefreshCw } from 'lucide-react';
 import {
-  Box,
   Button,
-  Paper,
+  Badge,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+  Modal,
+} from '../ui';
 import { RecurringTransactionResponse, RecurringTransactionRequest, Category } from '../../types';
-import { recurringTransactionAPI, categoryAPI } from '../../services/api';
+import { AccountSummary } from '../../types/account';
+import { recurringTransactionAPI, categoryAPI, accountAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
 import RecurringTransactionForm from './RecurringTransactionForm';
 import { useCurrency } from '../../contexts/CurrencyContext';
@@ -35,9 +23,11 @@ const RecurringTransactionList: React.FC = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [recurringToDelete, setRecurringToDelete] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<AccountSummary[]>([]);
 
   useEffect(() => {
     fetchCategories();
+    fetchAccounts();
     fetchRecurringTransactions();
   }, []);
 
@@ -48,6 +38,24 @@ const RecurringTransactionList: React.FC = () => {
       setCategories(data);
     } catch (err: any) {
       console.error('Failed to fetch categories:', err);
+    }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await accountAPI.getActive();
+      let data = [];
+      if (Array.isArray(response.data)) {
+        data = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        data = response.data.data;
+      } else if (response.data?.content && Array.isArray(response.data.content)) {
+        data = response.data.content;
+      }
+      setAccounts(data);
+    } catch (err: any) {
+      console.error('Failed to fetch accounts:', err);
+      setAccounts([]);
     }
   };
 
@@ -110,10 +118,24 @@ const RecurringTransactionList: React.FC = () => {
     }
   };
 
-  const getCategoryName = (categoryId?: number): string => {
-    if (!categoryId) return 'Uncategorized';
-    const category = categories.find((c) => c.id === categoryId);
+  const getCategoryName = (recurringItem: RecurringTransactionResponse): string => {
+    if (recurringItem.fromAccount || recurringItem.toAccount) {
+      return 'Money Transfer';
+    }
+    if (!recurringItem.category?.id) return 'Uncategorized';
+    const category = categories.find((c) => c.id === recurringItem.category?.id);
     return category ? category.name : 'Uncategorized';
+  };
+
+  const getAccountInfo = (recurringItem: RecurringTransactionResponse): string => {
+    const parts: string[] = [];
+    if (recurringItem.fromAccount) {
+      parts.push(recurringItem.fromAccount.name);
+    }
+    if (recurringItem.toAccount) {
+      parts.push(recurringItem.toAccount.name);
+    }
+    return parts.join(' | ');
   };
 
   const formatDate = (dateString: string): string => {
@@ -121,97 +143,160 @@ const RecurringTransactionList: React.FC = () => {
   };
 
   if (loading) {
-    return <CircularProgress />;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Recurring Transactions</h1>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenForm()}>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Recurring Transactions
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage automatic recurring payments and income
+          </p>
+        </div>
+        <Button
+          onClick={() => handleOpenForm()}
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
           Add Recurring
         </Button>
-      </Box>
+      </div>
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && (
+        <div className="bg-danger-50 dark:bg-danger-900/30 border border-danger-200 dark:border-danger-800 text-danger-600 dark:text-danger-400 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
 
-      <TableContainer component={Paper}>
+      {/* Recurring Transactions Table */}
+      <Table.Container>
         <Table>
-          <TableHead className="table-header">
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Frequency</TableCell>
-              <TableCell>Next Date</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeadCell>Name</Table.HeadCell>
+              <Table.HeadCell>Category</Table.HeadCell>
+              <Table.HeadCell>Accounts</Table.HeadCell>
+              <Table.HeadCell>Amount</Table.HeadCell>
+              <Table.HeadCell>Frequency</Table.HeadCell>
+              <Table.HeadCell>Next Date</Table.HeadCell>
+              <Table.HeadCell>Status</Table.HeadCell>
+              <Table.HeadCell align="center">Actions</Table.HeadCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body>
             {recurring.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                  No recurring transactions found
-                </TableCell>
-              </TableRow>
+              <Table.Row hoverable={false}>
+                <Table.BodyCell colSpan={8}>
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Repeat className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>No recurring transactions found</p>
+                    <p className="text-sm mt-1">Set up recurring transactions for automatic tracking</p>
+                  </div>
+                </Table.BodyCell>
+              </Table.Row>
             ) : (
               recurring.map((rec) => (
-                <TableRow key={rec.id} hover>
-                  <TableCell>{rec.name}</TableCell>
-                  <TableCell>{getCategoryName(rec.category?.id)}</TableCell>
-                  <TableCell>{formatAmount(convertAmount(rec.amount))}</TableCell>
-                  <TableCell>{rec.frequency}</TableCell>
-                  <TableCell>{formatDate(rec.nextExecutionDate)}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={rec.isActive ? 'Active' : 'Inactive'}
-                      color={rec.isActive ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenForm(rec)}
-                      color="primary"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(rec.id)}
-                      color="error"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                <Table.Row key={rec.id}>
+                  <Table.BodyCell className="font-medium">
+                    {rec.name}
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <Badge variant="neutral">
+                      {getCategoryName(rec)}
+                    </Badge>
+                  </Table.BodyCell>
+                  <Table.BodyCell className="text-sm text-gray-500 dark:text-gray-400">
+                    {getAccountInfo(rec)}
+                  </Table.BodyCell>
+                  <Table.BodyCell className="font-semibold">
+                    {formatAmount(convertAmount(rec.amount))}
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <span className="flex items-center gap-1">
+                      <RefreshCw className="w-4 h-4 text-gray-400" />
+                      {rec.frequency}
+                    </span>
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    {formatDate(rec.nextExecutionDate)}
+                  </Table.BodyCell>
+                  <Table.BodyCell>
+                    <Badge variant={rec.isActive ? 'success' : 'neutral'}>
+                      {rec.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </Table.BodyCell>
+                  <Table.BodyCell align="center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => handleOpenForm(rec)}
+                        className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Edit recurring transaction"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(rec.id)}
+                        className="p-2 text-gray-500 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded-lg transition-colors duration-150"
+                        aria-label="Delete recurring transaction"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </Table.BodyCell>
+                </Table.Row>
               ))
             )}
-          </TableBody>
+          </Table.Body>
         </Table>
-      </TableContainer>
+      </Table.Container>
 
-      <RecurringTransactionForm
-        open={openForm}
+      {/* Recurring Transaction Form Modal */}
+      <Modal
+        isOpen={openForm}
         onClose={handleCloseForm}
-        onSubmit={handleFormSubmit}
-        recurring={editingRecurring}
-        categories={categories}
-      />
+        title={editingRecurring ? 'Edit Recurring Transaction' : 'Add Recurring Transaction'}
+        size="lg"
+      >
+        <RecurringTransactionForm
+          open={openForm}
+          onClose={handleCloseForm}
+          onSubmit={handleFormSubmit}
+          recurring={editingRecurring}
+          categories={categories}
+          accounts={accounts}
+        />
+      </Modal>
 
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>Are you sure you want to delete this recurring transaction?</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={confirmDeleteRecurring} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-300">
+            Are you sure you want to delete this recurring transaction? This action cannot be undone.
+          </p>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteRecurring}>
+              Delete
+            </Button>
+          </Modal.Footer>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

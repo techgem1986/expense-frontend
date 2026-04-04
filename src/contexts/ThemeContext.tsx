@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -29,16 +27,39 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [mode, setMode] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode;
-    // Set initial data-theme attribute
-    document.documentElement.setAttribute('data-theme', stored || 'light');
     return stored || 'light';
   });
 
+  // Apply dark mode class to document
   useEffect(() => {
+    const root = document.documentElement;
+    if (mode === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
     localStorage.setItem(STORAGE_KEY, mode);
-    // Set data-theme attribute on document for CSS variables
-    document.documentElement.setAttribute('data-theme', mode);
   }, [mode]);
+
+  // Check system preference on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setMode(prefersDark ? 'dark' : 'light');
+    }
+
+    // Listen for system preference changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem(STORAGE_KEY)) {
+        setMode(e.matches ? 'dark' : 'light');
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
@@ -48,56 +69,18 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setMode(newMode);
   }, []);
 
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode,
-          primary: {
-            main: mode === 'dark' ? '#90caf9' : '#1976d2',
-          },
-          secondary: {
-            main: mode === 'dark' ? '#ce93d8' : '#dc004e',
-          },
-          background: {
-            default: mode === 'dark' ? '#121212' : '#f5f5f5',
-            paper: mode === 'dark' ? '#1e1e1e' : '#ffffff',
-          },
-        },
-        components: {
-          MuiDrawer: {
-            styleOverrides: {
-              paper: {
-                backgroundColor: mode === 'dark' ? '#1e1e1e' : '#ffffff',
-              },
-            },
-          },
-          MuiListItem: {
-            styleOverrides: {
-              root: {
-                '&:hover': {
-                  backgroundColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                },
-              },
-            },
-          },
-        },
-      }),
-    [mode]
+  const value = useMemo(
+    () => ({
+      mode,
+      toggleTheme,
+      setThemeMode,
+    }),
+    [mode, toggleTheme, setThemeMode]
   );
-
-  const value: ThemeContextType = {
-    mode,
-    toggleTheme,
-    setThemeMode,
-  };
 
   return (
     <ThemeContext.Provider value={value}>
-      <MuiThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </MuiThemeProvider>
+      {children}
     </ThemeContext.Provider>
   );
 };

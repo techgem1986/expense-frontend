@@ -23,18 +23,24 @@ export class BudgetsPage extends BasePage {
     this.addBudgetButton = page.locator('button:has-text("Add Budget")');
     this.budgetTable = page.locator('table');
     this.noBudgetsMessage = page.locator('text=No budgets found');
-    this.dialogTitle = page.locator('.MuiDialogTitle-root');
+    // Updated: Tailwind modal dialog title
+    this.dialogTitle = page.locator('[class*="text-xl"][class*="font-semibold"]').first();
     this.nameInput = page.locator('input[name="name"], input#name');
-    this.categorySelect = page.locator('select[name="categoryId"], .MuiSelect-select').first();
+    // Updated: Tailwind select element
+    this.categorySelect = page.locator('select[name="categoryId"]').first();
     this.limitAmountInput = page.locator('input[name="limitAmount"], input[type="number"]').first();
-    this.periodSelect = page.locator('select[name="period"], .MuiSelect-select').last();
+    // Updated: Tailwind select element
+    this.periodSelect = page.locator('select[name="period"]').last();
     this.submitButton = page.locator('button[type="submit"]');
     this.cancelButton = page.locator('button:has-text("Cancel")').first();
-    this.errorMessage = page.locator('.MuiAlert-root.MuiAlert-colorError');
+    // Updated: Tailwind error message styling
+    this.errorMessage = page.locator('[class*="bg-danger-50"][class*="text-danger-600"]');
     this.deleteConfirmButton = page.locator('button:has-text("Delete")').last();
     this.deleteCancelButton = page.locator('button:has-text("Cancel")').last();
-    this.progressBars = page.locator('.MuiLinearProgress-root');
-    this.pagination = page.locator('.MuiPagination-root');
+    // Updated: Tailwind progress bars
+    this.progressBars = page.locator('[class*="h-2"][class*="rounded-full"]');
+    // Updated: Tailwind pagination
+    this.pagination = page.locator('div.flex.gap-2:has(button:has-text("Previous")), div:has(button:has-text("Previous")):has(button:has-text("Next"))');
   }
 
   async goto() {
@@ -68,11 +74,11 @@ export class BudgetsPage extends BasePage {
   }
 
   async clickEditBudget(budgetName: string) {
-    await this.page.locator('tr', { hasText: budgetName }).locator('button[aria-label="edit"]').click();
+    await this.page.locator('tr', { hasText: budgetName }).locator('button[aria-label="Edit budget"]').click();
   }
 
   async clickDeleteBudget(budgetName: string) {
-    await this.page.locator('tr', { hasText: budgetName }).locator('button[aria-label="delete"]').click();
+    await this.page.locator('tr', { hasText: budgetName }).locator('button[aria-label="Delete budget"]').click();
   }
 
   async confirmDelete() {
@@ -85,8 +91,25 @@ export class BudgetsPage extends BasePage {
   }
 
   async goToPage(pageNum: number) {
-    await this.pagination.locator(`button[aria-label="Go to page ${pageNum}"]`).click();
-    await this.waitForPageLoad();
+    // Updated: Tailwind pagination uses Previous/Next buttons
+    const currentPage = await this.getCurrentPage();
+    if (pageNum > currentPage) {
+      for (let i = currentPage; i < pageNum; i++) {
+        await this.pagination.locator('button:has-text("Next")').click();
+        await this.waitForPageLoad();
+      }
+    } else if (pageNum < currentPage) {
+      for (let i = currentPage; i > pageNum; i--) {
+        await this.pagination.locator('button:has-text("Previous")').click();
+        await this.waitForPageLoad();
+      }
+    }
+  }
+
+  async getCurrentPage(): Promise<number> {
+    const pageText = await this.pagination.locator('p').first().textContent();
+    const match = pageText?.match(/Page (\d+)/);
+    return match ? parseInt(match[1]) : 1;
   }
 
   async expectBudgetInList(name: string) {
