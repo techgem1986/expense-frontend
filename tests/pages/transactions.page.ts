@@ -17,6 +17,17 @@ export class TransactionsPage extends BasePage {
   readonly deleteConfirmButton: Locator;
   readonly deleteCancelButton: Locator;
   readonly pagination: Locator;
+  // Date range filter locators
+  readonly startDateInput: Locator;
+  readonly endDateInput: Locator;
+  readonly applyDateRangeButton: Locator;
+  readonly dateRangeDisplay: Locator;
+  readonly currentMonthButton: Locator;
+  readonly previousMonthButton: Locator;
+  readonly yearToDateButton: Locator;
+  readonly lastYearButton: Locator;
+  readonly prevNavButton: Locator;
+  readonly nextNavButton: Locator;
 
   constructor(page: Page) {
     super(page, '/transactions');
@@ -40,6 +51,17 @@ export class TransactionsPage extends BasePage {
     this.deleteCancelButton = page.locator('button:has-text("Cancel")').last();
     // Updated: Tailwind pagination
     this.pagination = page.locator('div.flex.gap-2:has(button:has-text("Previous")), div:has(button:has-text("Previous")):has(button:has-text("Next"))');
+    // Date range filter locators
+    this.startDateInput = page.locator('label:has-text("Start Date") + div input[type="date"], input[type="date"]').first();
+    this.endDateInput = page.locator('label:has-text("End Date") + div input[type="date"], input[type="date"]').last();
+    this.applyDateRangeButton = page.locator('button:has-text("Apply")').first();
+    this.dateRangeDisplay = page.locator('[class*="text-sm"]').filter({ has: page.locator('[aria-label*="calendar"], svg').first() });
+    this.currentMonthButton = page.locator('button:has-text("Current Month")');
+    this.previousMonthButton = page.locator('button:has-text("Previous Month")');
+    this.yearToDateButton = page.locator('button:has-text("Year to Date")');
+    this.lastYearButton = page.locator('button:has-text("Last Year")');
+    this.prevNavButton = page.locator('button[aria-label="Previous month"], button:has(svg) >> text=Prev');
+    this.nextNavButton = page.locator('button[aria-label="Next month"], button:has(svg) >> text=Next');
   }
 
   async goto() {
@@ -138,5 +160,81 @@ export class TransactionsPage extends BasePage {
   async expectAmountVisible(description: string, expectedAmount: string) {
     const row = await this.getTransactionRow(description);
     await expect(row).toContainText(expectedAmount);
+  }
+
+  // Date range filter methods
+  async setDateRange(startDate: string, endDate: string) {
+    await this.startDateInput.fill(startDate);
+    await this.endDateInput.fill(endDate);
+    await this.applyDateRangeButton.click();
+    await this.waitForPageLoad();
+  }
+
+  async setStartDate(startDate: string) {
+    await this.startDateInput.fill(startDate);
+  }
+
+  async setEndDate(endDate: string) {
+    await this.endDateInput.fill(endDate);
+  }
+
+  async clickApplyDateRange() {
+    await this.applyDateRangeButton.click();
+    await this.waitForPageLoad();
+  }
+
+  async clickCurrentMonth() {
+    await this.currentMonthButton.click();
+    await this.waitForPageLoad();
+  }
+
+  async clickPreviousMonth() {
+    await this.previousMonthButton.click();
+    await this.waitForPageLoad();
+  }
+
+  async clickYearToDate() {
+    await this.yearToDateButton.click();
+    await this.waitForPageLoad();
+  }
+
+  async clickLastYear() {
+    await this.lastYearButton.click();
+    await this.waitForPageLoad();
+  }
+
+  async clickPrevMonth() {
+    await this.prevNavButton.click();
+  }
+
+  async clickNextMonth() {
+    await this.nextNavButton.click();
+  }
+
+  async expectDateRangeFilterVisible() {
+    await expect(this.startDateInput).toBeVisible();
+    await expect(this.endDateInput).toBeVisible();
+    await expect(this.applyDateRangeButton).toBeVisible();
+  }
+
+  async expectQuickSelectButtonsVisible() {
+    await expect(this.currentMonthButton).toBeVisible();
+    await expect(this.previousMonthButton).toBeVisible();
+    await expect(this.yearToDateButton).toBeVisible();
+    await expect(this.lastYearButton).toBeVisible();
+  }
+
+  async expectNavButtonsVisible() {
+    await expect(this.prevNavButton).toBeVisible();
+    await expect(this.nextNavButton).toBeVisible();
+  }
+
+  async expectDateRangeDisplayed() {
+    await expect(this.dateRangeDisplay).toBeVisible();
+  }
+
+  async getTransactionCount(): Promise<number> {
+    const rows = this.transactionTable.locator('tbody tr');
+    return await rows.count();
   }
 }
