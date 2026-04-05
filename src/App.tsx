@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -15,10 +15,12 @@ import Dashboard from './components/analytics/Dashboard';
 import AccountList from './components/accounts/AccountList';
 import './index.css';
 
-// Protected Route component
+// Protected Route component - allows authenticated users to access any screen directly
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
+  // Show loading spinner while checking authentication status
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
@@ -30,13 +32,28 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  // If user is authenticated, allow access to the requested screen
+  if (user) {
+    return <>{children}</>;
+  }
+
+  // If not authenticated, redirect to login with return URL
+  // This ensures proper error message is shown on login page
+  return (
+    <Navigate
+      to="/login"
+      state={{ from: location, message: 'Please login to access this page.' }}
+      replace
+    />
+  );
 };
 
-// Public Route component (redirect to dashboard if already logged in)
+// Public Route component - Login and Register pages are publicly accessible
+// If user is already logged in, redirect to dashboard
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
+  // Show loading spinner while checking authentication status
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
@@ -48,7 +65,13 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  return user ? <Navigate to="/dashboard" replace /> : <>{children}</>;
+  // If user is already logged in, redirect to dashboard
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Otherwise, show the public page (login/register)
+  return <>{children}</>;
 };
 
 function App() {

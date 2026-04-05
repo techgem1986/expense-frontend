@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getErrorMessage } from '../../services/errorUtils';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -21,8 +21,19 @@ type LoginFormData = yup.InferType<typeof loginSchema>;
 const Login: React.FC = () => {
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Get redirect message from navigation state (when redirected from protected route)
+  const redirectMessage = (location.state as { message?: string })?.message;
+
+  // Show redirect message as error on mount
+  useEffect(() => {
+    if (redirectMessage) {
+      setError(redirectMessage);
+    }
+  }, [redirectMessage]);
 
   const {
     register,
@@ -48,16 +59,10 @@ const Login: React.FC = () => {
         {/* Logo & Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-100 dark:bg-primary-900/30 mb-4">
-            <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-              EH
-            </span>
+            <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">EH</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            ExpenseHub
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sign in to your account
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ExpenseHub</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Sign in to your account</p>
         </div>
 
         {/* Form Card */}
@@ -93,11 +98,7 @@ const Login: React.FC = () => {
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     tabIndex={-1}
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 }
                 error={errors.password?.message}
@@ -111,9 +112,7 @@ const Login: React.FC = () => {
                   type="checkbox"
                   className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
-                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                  Remember me
-                </span>
+                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
               </label>
               <button
                 type="button"
