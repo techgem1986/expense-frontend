@@ -17,6 +17,8 @@ const RecurringTransactionList: React.FC = () => {
   const { formatAmount, convertAmount } = useCurrency();
   const [recurring, setRecurring] = useState<RecurringTransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [editingRecurring, setEditingRecurring] = useState<RecurringTransactionResponse | null>(null);
@@ -88,6 +90,7 @@ const RecurringTransactionList: React.FC = () => {
   };
 
   const handleFormSubmit = async (formData: RecurringTransactionRequest) => {
+    setSubmitting(true);
     try {
       if (editingRecurring) {
         await recurringTransactionAPI.update(editingRecurring.id, formData);
@@ -98,6 +101,8 @@ const RecurringTransactionList: React.FC = () => {
       fetchRecurringTransactions();
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to save recurring transaction'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -108,6 +113,7 @@ const RecurringTransactionList: React.FC = () => {
 
   const confirmDeleteRecurring = async () => {
     if (recurringToDelete === null) return;
+    setDeleting(true);
     try {
       await recurringTransactionAPI.delete(recurringToDelete);
       setRecurring(recurring.filter((r) => r.id !== recurringToDelete));
@@ -115,6 +121,8 @@ const RecurringTransactionList: React.FC = () => {
       setRecurringToDelete(null);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to delete recurring transaction'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -261,7 +269,7 @@ const RecurringTransactionList: React.FC = () => {
       {/* Recurring Transaction Form Modal */}
       <Modal
         isOpen={openForm}
-        onClose={handleCloseForm}
+        onClose={() => !submitting && handleCloseForm()}
         title={editingRecurring ? 'Edit Recurring Transaction' : 'Add Recurring Transaction'}
         size="lg"
       >
@@ -272,13 +280,14 @@ const RecurringTransactionList: React.FC = () => {
           recurring={editingRecurring}
           categories={categories}
           accounts={accounts}
+          isSubmitting={submitting}
         />
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        onClose={() => !deleting && setOpenDeleteDialog(false)}
         title="Confirm Delete"
         size="sm"
       >
@@ -287,11 +296,11 @@ const RecurringTransactionList: React.FC = () => {
             Are you sure you want to delete this recurring transaction? This action cannot be undone.
           </p>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={confirmDeleteRecurring}>
-              Delete
+            <Button variant="danger" onClick={confirmDeleteRecurring} loading={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </Modal.Footer>
         </div>

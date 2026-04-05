@@ -29,6 +29,7 @@ const TransactionList: React.FC = () => {
   const { formatAmount, convertAmount } = useCurrency();
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionResponse | null>(null);
@@ -139,6 +140,7 @@ const TransactionList: React.FC = () => {
 
   const confirmDeleteTransaction = async () => {
     if (transactionToDelete === null) return;
+    setDeleting(true);
     try {
       await transactionAPI.delete(transactionToDelete);
       setTransactions(transactions.filter((t) => t.id !== transactionToDelete));
@@ -146,6 +148,8 @@ const TransactionList: React.FC = () => {
       setTransactionToDelete(null);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to delete transaction'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -400,7 +404,7 @@ const TransactionList: React.FC = () => {
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        onClose={() => !deleting && setOpenDeleteDialog(false)}
         title="Confirm Delete"
         size="sm"
       >
@@ -409,11 +413,11 @@ const TransactionList: React.FC = () => {
             Are you sure you want to delete this transaction? This action cannot be undone.
           </p>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={confirmDeleteTransaction}>
-              Delete
+            <Button variant="danger" onClick={confirmDeleteTransaction} loading={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </Modal.Footer>
         </div>

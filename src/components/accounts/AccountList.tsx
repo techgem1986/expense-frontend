@@ -13,6 +13,8 @@ const AccountList: React.FC = () => {
   const { formatAmount, selectedCurrency } = useCurrency();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
@@ -103,6 +105,7 @@ const AccountList: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    setSubmitting(true);
     try {
       if (selectedAccount) {
         await accountAPI.update(selectedAccount.id, formData);
@@ -119,6 +122,8 @@ const AccountList: React.FC = () => {
         message: error.response?.data?.message || 'Error saving account',
         type: 'error',
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -129,6 +134,7 @@ const AccountList: React.FC = () => {
 
   const handleDeleteConfirm = async () => {
     if (!selectedAccount) return;
+    setDeleting(true);
     try {
       await accountAPI.delete(selectedAccount.id);
       setSnackbar({ open: true, message: 'Account deleted successfully', type: 'success' });
@@ -141,6 +147,8 @@ const AccountList: React.FC = () => {
         message: error.response?.data?.message || 'Error deleting account',
         type: 'error',
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -314,7 +322,7 @@ const AccountList: React.FC = () => {
       {/* Add/Edit Account Modal */}
       <Modal
         isOpen={openDialog}
-        onClose={handleCloseDialog}
+        onClose={() => !submitting && handleCloseDialog()}
         title={selectedAccount ? 'Edit Account' : 'Add New Account'}
         size="lg"
       >
@@ -388,11 +396,11 @@ const AccountList: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={handleCloseDialog}>
+            <Button variant="secondary" onClick={handleCloseDialog} disabled={submitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={!formData.name}>
-              {selectedAccount ? 'Update' : 'Create'}
+            <Button onClick={handleSubmit} disabled={!formData.name || submitting}>
+              {submitting ? 'Saving...' : (selectedAccount ? 'Update' : 'Create')}
             </Button>
           </div>
         </div>
@@ -401,7 +409,7 @@ const AccountList: React.FC = () => {
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        onClose={() => !deleting && setOpenDeleteDialog(false)}
         title="Confirm Delete"
         size="sm"
       >
@@ -411,11 +419,11 @@ const AccountList: React.FC = () => {
             the account as inactive.
           </p>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleDeleteConfirm}>
-              Delete
+            <Button variant="danger" onClick={handleDeleteConfirm} loading={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
         </div>

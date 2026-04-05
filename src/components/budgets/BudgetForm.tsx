@@ -29,9 +29,10 @@ const validationSchema = yup.object().shape({
 interface BudgetFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: BudgetRequest) => void;
+  onSubmit: (_: BudgetRequest) => void;
   budget?: BudgetResponse | null;
   categories: Category[];
+  isSubmitting?: boolean;
 }
 
 const BudgetForm: React.FC<BudgetFormProps> = ({
@@ -40,6 +41,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
   onSubmit,
   budget,
   categories,
+  isSubmitting = false,
 }) => {
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
 
@@ -173,11 +175,11 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button variant="secondary" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit(handleFormSubmit)}>
-          {budget ? 'Update' : 'Create'}
+        <Button onClick={handleSubmit(handleFormSubmit)} disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : (budget ? 'Update' : 'Create')}
         </Button>
       </div>
     </div>

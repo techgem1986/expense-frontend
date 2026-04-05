@@ -13,6 +13,9 @@ import { Bell, Check, Trash2 } from 'lucide-react';
 const AlertList: React.FC = () => {
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [markingAsRead, setMarkingAsRead] = useState<number | null>(null);
+  const [markingAllAsRead, setMarkingAllAsRead] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [alertToDelete, setAlertToDelete] = useState<number | null>(null);
@@ -40,6 +43,7 @@ const AlertList: React.FC = () => {
   }, [fetchAlerts]);
 
   const handleMarkAsRead = async (alertId: number) => {
+    setMarkingAsRead(alertId);
     try {
       await alertAPI.markAsRead(alertId);
       setAlerts(
@@ -47,15 +51,20 @@ const AlertList: React.FC = () => {
       );
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to mark as read'));
+    } finally {
+      setMarkingAsRead(null);
     }
   };
 
   const handleMarkAllAsRead = async () => {
+    setMarkingAllAsRead(true);
     try {
       await alertAPI.markAllAsRead();
       setAlerts(alerts.map((a) => ({ ...a, isRead: true })));
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to mark all as read'));
+    } finally {
+      setMarkingAllAsRead(false);
     }
   };
 
@@ -66,6 +75,7 @@ const AlertList: React.FC = () => {
 
   const confirmDeleteAlert = async () => {
     if (alertToDelete === null) return;
+    setDeleting(true);
     try {
       await alertAPI.delete(alertToDelete);
       setAlerts(alerts.filter((a) => a.id !== alertToDelete));
@@ -73,6 +83,8 @@ const AlertList: React.FC = () => {
       setAlertToDelete(null);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to delete alert'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -104,8 +116,9 @@ const AlertList: React.FC = () => {
           <Button
             onClick={handleMarkAllAsRead}
             leftIcon={<Check className="w-4 h-4" />}
+            disabled={markingAllAsRead}
           >
-            Mark All as Read
+            {markingAllAsRead ? 'Marking...' : 'Mark All as Read'}
           </Button>
         )}
       </div>
@@ -170,10 +183,15 @@ const AlertList: React.FC = () => {
                       {!alert.isRead && (
                         <button
                           onClick={() => handleMarkAsRead(alert.id)}
-                          className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors duration-150"
+                          disabled={markingAsRead === alert.id}
+                          className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors duration-150 disabled:opacity-50"
                           aria-label="Mark as read"
                         >
-                          <Check className="w-4 h-4" />
+                          {markingAsRead === alert.id ? (
+                            <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
                         </button>
                       )}
                       <button
@@ -222,7 +240,7 @@ const AlertList: React.FC = () => {
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        onClose={() => !deleting && setOpenDeleteDialog(false)}
         title="Confirm Delete"
         size="sm"
       >
@@ -231,11 +249,11 @@ const AlertList: React.FC = () => {
             Are you sure you want to delete this alert? This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={confirmDeleteAlert}>
-              Delete
+            <Button variant="danger" onClick={confirmDeleteAlert} loading={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
         </div>

@@ -17,11 +17,12 @@ export interface CategoryFormData {
 }
 
 interface CategoryFormProps {
-  onSubmit: (data: CategoryFormData) => void;
+  onSubmit: (_: CategoryFormData) => void;
   initialData?: CategoryFormData;
+  isSubmitting?: boolean;
 }
 
-const CategoryForm: React.FC<CategoryFormProps> = ({ onSubmit, initialData }) => {
+const CategoryForm: React.FC<CategoryFormProps> = ({ onSubmit, initialData, isSubmitting = false }) => {
   const {
     register,
     handleSubmit,
@@ -76,8 +77,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ onSubmit, initialData }) =>
         {...register('type')}
       />
       <div className="flex justify-end pt-4">
-        <Button type="submit">
-          {initialData ? 'Update Category' : 'Create Category'}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : (initialData ? 'Update Category' : 'Create Category')}
         </Button>
       </div>
     </form>

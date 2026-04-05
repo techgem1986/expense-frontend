@@ -14,6 +14,8 @@ import CategoryForm from './CategoryForm';
 const CategoryList: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryUpdateRequest | null>(null);
@@ -69,18 +71,24 @@ const CategoryList: React.FC = () => {
   const confirmDeleteCategory = async () => {
     if (!categoryToDelete) return;
 
+    setDeleting(true);
     try {
       await categoryAPI.delete(categoryToDelete.toString());
       setCategories(categories.filter((cat) => cat.id !== categoryToDelete));
+      // Refresh the list to ensure consistency
+      await fetchCategories();
       setOpenDeleteDialog(false);
       setCategoryToDelete(null);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to delete category'));
+    } finally {
+      setDeleting(false);
     }
   };
 
   const handleFormSubmit = async (data: CategoryFormData) => {
     setFormError(null);
+    setSubmitting(true);
     try {
       if (editingCategory) {
         const response = await categoryAPI.update(editingCategory.id.toString(), {
@@ -88,8 +96,9 @@ const CategoryList: React.FC = () => {
           description: data.description,
           type: data.type,
         });
+        const updatedCategory = response.data.data || response.data;
         setCategories(
-          categories.map((cat) => (cat.id === editingCategory.id ? response.data : cat)),
+          categories.map((cat) => (cat.id === editingCategory.id ? updatedCategory : cat)),
         );
       } else {
         const response = await categoryAPI.create({
@@ -97,12 +106,15 @@ const CategoryList: React.FC = () => {
           description: data.description,
           type: data.type,
         });
-        setCategories([...categories, response.data]);
+        const newCategory = response.data.data || response.data;
+        setCategories([...categories, newCategory]);
       }
       setOpenForm(false);
       setEditingCategory(null);
     } catch (err: any) {
       setFormError(getErrorMessage(err, 'Failed to save category'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -217,7 +229,7 @@ const CategoryList: React.FC = () => {
       {/* Category Form Modal */}
       <Modal
         isOpen={openForm}
-        onClose={() => setOpenForm(false)}
+        onClose={() => !submitting && setOpenForm(false)}
         title={editingCategory ? 'Edit Category' : 'Add New Category'}
         size="md"
       >
@@ -229,13 +241,14 @@ const CategoryList: React.FC = () => {
         <CategoryForm
           onSubmit={handleFormSubmit}
           initialData={getInitialFormData()}
+          isSubmitting={submitting}
         />
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        onClose={() => !deleting && setOpenDeleteDialog(false)}
         title="Confirm Delete"
         size="sm"
       >
@@ -244,11 +257,11 @@ const CategoryList: React.FC = () => {
             Are you sure you want to delete this category? This action cannot be undone.
           </p>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={confirmDeleteCategory}>
-              Delete
+            <Button variant="danger" onClick={confirmDeleteCategory} loading={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </Modal.Footer>
         </div>

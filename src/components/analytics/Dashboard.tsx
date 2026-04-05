@@ -57,6 +57,7 @@ const Dashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Date range state - default to current month
   const [startDate, setStartDate] = useState(getCurrentMonthStart);
@@ -121,6 +122,7 @@ const Dashboard: React.FC = () => {
 
   // Comprehensive Export functionality
   const handleExportComprehensiveReport = async (format: 'excel' | 'pdf') => {
+    setExporting(true);
     try {
       // Extract year and month from current date range
       const currentMonth = new Date(startDate);
@@ -158,6 +160,8 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Export failed:', error);
       setError('Failed to export report. Please try again.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -219,30 +223,49 @@ const Dashboard: React.FC = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="relative group">
-              <Button variant="primary" size="sm" className="flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Download Report
-              </Button>
-              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="py-2">
-                  <button
-                    onClick={() => handleExportComprehensiveReport('excel')}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                  >
-                    <span className="w-3 h-3 bg-green-500 rounded-sm"></span>
-                    Excel Report
-                  </button>
-                  <button
-                    onClick={() => handleExportComprehensiveReport('pdf')}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                  >
-                    <span className="w-3 h-3 bg-red-500 rounded-sm"></span>
-                    PDF Report
-                  </button>
+              <div className="relative group">
+                <Button variant="primary" size="sm" className="flex items-center gap-2" disabled={exporting}>
+                  {exporting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Download Report
+                    </>
+                  )}
+                </Button>
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="py-2">
+                    <button
+                      onClick={() => handleExportComprehensiveReport('excel')}
+                      disabled={exporting}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {exporting ? (
+                        <div className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="w-3 h-3 bg-green-500 rounded-sm"></span>
+                      )}
+                      Excel Report
+                    </button>
+                    <button
+                      onClick={() => handleExportComprehensiveReport('pdf')}
+                      disabled={exporting}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {exporting ? (
+                        <div className="w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="w-3 h-3 bg-red-500 rounded-sm"></span>
+                      )}
+                      PDF Report
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
       </div>

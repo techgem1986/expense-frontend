@@ -16,6 +16,8 @@ const BudgetList: React.FC = () => {
   const { formatAmount, convertAmount } = useCurrency();
   const [budgets, setbudgets] = useState<BudgetResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [editingBudget, setEditingBudget] = useState<BudgetResponse | null>(null);
@@ -71,6 +73,7 @@ const BudgetList: React.FC = () => {
   };
 
   const handleFormSubmit = async (formData: BudgetRequest) => {
+    setSubmitting(true);
     try {
       if (editingBudget) {
         await budgetAPI.update(editingBudget.id, formData);
@@ -81,6 +84,8 @@ const BudgetList: React.FC = () => {
       fetchBudgets();
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to save budget'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -91,6 +96,7 @@ const BudgetList: React.FC = () => {
 
   const confirmDeleteBudget = async () => {
     if (budgetToDelete === null) return;
+    setDeleting(true);
     try {
       await budgetAPI.delete(budgetToDelete);
       setbudgets(budgets.filter((b) => b.id !== budgetToDelete));
@@ -98,6 +104,8 @@ const BudgetList: React.FC = () => {
       setBudgetToDelete(null);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to delete budget'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -255,7 +263,7 @@ const BudgetList: React.FC = () => {
       {/* Budget Form Modal */}
       <Modal
         isOpen={openForm}
-        onClose={handleCloseForm}
+        onClose={() => !submitting && handleCloseForm()}
         title={editingBudget ? 'Edit Budget' : 'Add Budget'}
         size="lg"
       >
@@ -265,13 +273,14 @@ const BudgetList: React.FC = () => {
           onSubmit={handleFormSubmit}
           budget={editingBudget}
           categories={categories}
+          isSubmitting={submitting}
         />
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
+        onClose={() => !deleting && setOpenDeleteDialog(false)}
         title="Confirm Delete"
         size="sm"
       >
@@ -280,11 +289,11 @@ const BudgetList: React.FC = () => {
             Are you sure you want to delete this budget? This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
+            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={confirmDeleteBudget}>
-              Delete
+            <Button variant="danger" onClick={confirmDeleteBudget} loading={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
         </div>

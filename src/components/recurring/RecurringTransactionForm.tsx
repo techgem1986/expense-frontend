@@ -52,10 +52,11 @@ const validationSchema = yup.object().shape({
 interface RecurringTransactionFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: RecurringTransactionRequest) => void;
+  onSubmit: (_: RecurringTransactionRequest) => void;
   recurring?: RecurringTransactionResponse | null;
   categories: Category[];
   accounts: AccountSummary[];
+  isSubmitting?: boolean;
 }
 
 const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
@@ -65,6 +66,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
   recurring,
   categories,
   accounts,
+  isSubmitting = false,
 }) => {
   const [isMoneyTransfer, setIsMoneyTransfer] = useState(false);
 
@@ -312,11 +314,11 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button variant="secondary" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit(handleFormSubmit)}>
-          {recurring ? 'Update' : 'Create'}
+        <Button onClick={handleSubmit(handleFormSubmit)} disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : (recurring ? 'Update' : 'Create')}
         </Button>
       </div>
     </div>
