@@ -40,8 +40,16 @@ import { getErrorMessage } from '../../services/errorUtils';
 import { useCurrency } from '../../contexts/CurrencyContext';
 
 const COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#84cc16',
+  '#f97316',
+  '#6366f1',
 ];
 
 const Dashboard: React.FC = () => {
@@ -111,35 +119,34 @@ const Dashboard: React.FC = () => {
     });
   };
 
-
   // Comprehensive Export functionality
   const handleExportComprehensiveReport = async (format: 'excel' | 'pdf') => {
     try {
       // Extract year and month from current date range
       const currentMonth = new Date(startDate);
       const yearMonth = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
-      
+
       let response;
       if (format === 'excel') {
         response = await exportAPI.exportComprehensiveReport(yearMonth);
       } else {
         response = await exportAPI.exportDashboardPDF(yearMonth);
       }
-      
+
       // Create download link
       let blob, filename;
       if (format === 'excel') {
         blob = new Blob([response.data], {
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         });
         filename = `comprehensive_financial_report_${yearMonth}.xlsx`;
       } else {
         blob = new Blob([response.data], {
-          type: 'application/pdf'
+          type: 'application/pdf',
         });
         filename = `financial_dashboard_${yearMonth}.pdf`;
       }
-      
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -168,9 +175,12 @@ const Dashboard: React.FC = () => {
     Expenses: m.expenses,
   }));
 
-  const saveRate = analytics?.totalIncome && analytics.totalIncome > 0
-    ? (((analytics.totalIncome - analytics.totalExpenses) / analytics.totalIncome) * 100).toFixed(1)
-    : '0';
+  const saveRate =
+    analytics?.totalIncome && analytics.totalIncome > 0
+      ? (((analytics.totalIncome - analytics.totalExpenses) / analytics.totalIncome) * 100).toFixed(
+          1,
+        )
+      : '0';
 
   if (loading && !analytics) {
     return (
@@ -196,9 +206,7 @@ const Dashboard: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Financial Dashboard
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Financial Dashboard</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Track your income, expenses, and financial goals
           </p>
@@ -206,15 +214,13 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Calendar className="w-4 h-4" />
-            <span>{formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}</span>
+            <span>
+              {formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative group">
-              <Button
-                variant="primary"
-                size="sm"
-                className="flex items-center gap-2"
-              >
+              <Button variant="primary" size="sm" className="flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 Download Report
               </Button>
@@ -288,22 +294,24 @@ const Dashboard: React.FC = () => {
                   key={account.id}
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="p-1.5 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
                       <Wallet className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {account.name}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-bold ${
-                      account.currentBalance >= 0
-                        ? 'text-success-600 dark:text-success-400'
-                        : 'text-danger-600 dark:text-danger-400'
-                    }`}>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p
+                      className={`text-sm font-bold ${
+                        account.currentBalance >= 0
+                          ? 'text-success-600 dark:text-success-400'
+                          : 'text-danger-600 dark:text-danger-400'
+                      }`}
+                    >
                       {formatAmount(convertAmount(account.currentBalance))}
                     </p>
                   </div>
@@ -319,9 +327,7 @@ const Dashboard: React.FC = () => {
         <Card hover className="relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Total Income
-              </p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Income</p>
               <p className="mt-2 text-2xl font-bold text-success-600 dark:text-success-400">
                 {formatAmount(convertAmount(analytics.totalIncome))}
               </p>
@@ -340,9 +346,7 @@ const Dashboard: React.FC = () => {
         <Card hover className="relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Total Expenses
-              </p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</p>
               <p className="mt-2 text-2xl font-bold text-danger-600 dark:text-danger-400">
                 {formatAmount(convertAmount(analytics.totalExpenses))}
               </p>
@@ -361,27 +365,31 @@ const Dashboard: React.FC = () => {
         <Card hover className="relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Net Balance
-              </p>
-              <p className={`mt-2 text-2xl font-bold ${
-                analytics.netBalance >= 0
-                  ? 'text-success-600 dark:text-success-400'
-                  : 'text-danger-600 dark:text-danger-400'
-              }`}>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Net Balance</p>
+              <p
+                className={`mt-2 text-2xl font-bold ${
+                  analytics.netBalance >= 0
+                    ? 'text-success-600 dark:text-success-400'
+                    : 'text-danger-600 dark:text-danger-400'
+                }`}
+              >
                 {formatAmount(convertAmount(analytics.netBalance))}
               </p>
             </div>
-            <div className={`p-3 rounded-xl ${
-              analytics.netBalance >= 0
-                ? 'bg-success-100 dark:bg-success-900/30'
-                : 'bg-danger-100 dark:bg-danger-900/30'
-            }`}>
-              <DollarSign className={`w-6 h-6 ${
+            <div
+              className={`p-3 rounded-xl ${
                 analytics.netBalance >= 0
-                  ? 'text-success-600 dark:text-success-400'
-                  : 'text-danger-600 dark:text-danger-400'
-              }`} />
+                  ? 'bg-success-100 dark:bg-success-900/30'
+                  : 'bg-danger-100 dark:bg-danger-900/30'
+              }`}
+            >
+              <DollarSign
+                className={`w-6 h-6 ${
+                  analytics.netBalance >= 0
+                    ? 'text-success-600 dark:text-success-400'
+                    : 'text-danger-600 dark:text-danger-400'
+                }`}
+              />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
@@ -393,9 +401,7 @@ const Dashboard: React.FC = () => {
         <Card hover className="relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Save Rate
-              </p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Save Rate</p>
               <p className="mt-2 text-2xl font-bold text-primary-600 dark:text-primary-400">
                 {saveRate}%
               </p>
@@ -501,7 +507,6 @@ const Dashboard: React.FC = () => {
         </Card>
       </div>
 
-
       {/* Spending Breakdown Details */}
       {spendingByCategory.length > 0 && (
         <Card>
@@ -529,9 +534,7 @@ const Dashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <Badge variant="primary">
-                  {(item.percentage ?? 0).toFixed(1)}%
-                </Badge>
+                <Badge variant="primary">{(item.percentage ?? 0).toFixed(1)}%</Badge>
               </div>
             ))}
           </div>

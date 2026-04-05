@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Wallet } from 'lucide-react';
-import {
-  Card,
-  Button,
-  Badge,
-  Table,
-  Modal,
-  Input,
-  Select,
-} from '../ui';
+import { Card, Button, Badge, Table, Modal, Input, Select } from '../ui';
 import { Account, AccountRequest, AccountTypeDisplayNames } from '../../types/account';
 import { accountAPI } from '../../services/api';
 import { useCurrency } from '../../contexts/CurrencyContext';
@@ -24,7 +16,11 @@ const AccountList: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    type: 'success' as 'success' | 'error',
+  });
   const [formData, setFormData] = useState<AccountFormData>({
     name: '',
     accountType: 'SAVINGS',
@@ -94,7 +90,11 @@ const AccountList: React.FC = () => {
     });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { name: string; value: unknown } }) => {
+  const handleInputChange = (
+    e:
+      | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+      | { target: { name: string; value: unknown } },
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -114,7 +114,11 @@ const AccountList: React.FC = () => {
       handleCloseDialog();
       fetchAccounts();
     } catch (error: any) {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Error saving account', type: 'error' });
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'Error saving account',
+        type: 'error',
+      });
     }
   };
 
@@ -132,7 +136,11 @@ const AccountList: React.FC = () => {
       setSelectedAccount(null);
       fetchAccounts();
     } catch (error: any) {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Error deleting account', type: 'error' });
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'Error deleting account',
+        type: 'error',
+      });
     }
   };
 
@@ -141,7 +149,10 @@ const AccountList: React.FC = () => {
   };
 
   const getTotalBalance = () => {
-    return accounts.reduce((sum, account) => sum + account.currentBalance, 0);
+    // Only include active accounts in the total balance calculation
+    return accounts
+      .filter((account) => account.isActive)
+      .reduce((sum, account) => sum + account.currentBalance, 0);
   };
 
   if (loading) {
@@ -157,27 +168,27 @@ const AccountList: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Accounts
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Total Balance ({selectedCurrency.code}): <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(getTotalBalance())}</span>
+            Total Balance ({selectedCurrency.code}):{' '}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {formatCurrency(getTotalBalance())}
+            </span>
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenDialog()}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
+        <Button onClick={() => handleOpenDialog()} leftIcon={<Plus className="w-4 h-4" />}>
           Add Account
         </Button>
       </div>
 
       {snackbar.open && (
-        <div className={`px-4 py-3 rounded-lg ${
-          snackbar.type === 'success'
-            ? 'bg-success-50 dark:bg-success-900/30 text-success-600 dark:text-success-400 border border-success-200 dark:border-success-800'
-            : 'bg-danger-50 dark:bg-danger-900/30 text-danger-600 dark:text-danger-400 border border-danger-200 dark:border-danger-800'
-        }`}>
+        <div
+          className={`px-4 py-3 rounded-lg ${
+            snackbar.type === 'success'
+              ? 'bg-success-50 dark:bg-success-900/30 text-success-600 dark:text-success-400 border border-success-200 dark:border-success-800'
+              : 'bg-danger-50 dark:bg-danger-900/30 text-danger-600 dark:text-danger-400 border border-danger-200 dark:border-danger-800'
+          }`}
+        >
           {snackbar.message}
         </div>
       )}
@@ -192,10 +203,7 @@ const AccountList: React.FC = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">
               Add your first account to start tracking your finances
             </p>
-            <Button
-              onClick={() => handleOpenDialog()}
-              leftIcon={<Plus className="w-4 h-4" />}
-            >
+            <Button onClick={() => handleOpenDialog()} leftIcon={<Plus className="w-4 h-4" />}>
               Add Account
             </Button>
           </div>
@@ -207,7 +215,7 @@ const AccountList: React.FC = () => {
             <Card>
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Accounts</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {accounts.filter(a => a.isActive).length}
+                {accounts.filter((a) => a.isActive).length}
               </p>
             </Card>
             <Card>
@@ -219,7 +227,7 @@ const AccountList: React.FC = () => {
             <Card>
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Types</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {new Set(accounts.map(a => a.accountType)).size}
+                {new Set(accounts.map((a) => a.accountType)).size}
               </p>
             </Card>
           </div>
@@ -246,7 +254,9 @@ const AccountList: React.FC = () => {
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
                         {account.description && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{account.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {account.description}
+                          </p>
                         )}
                       </div>
                     </Table.BodyCell>
@@ -264,7 +274,10 @@ const AccountList: React.FC = () => {
                     <Table.BodyCell align="right" className="text-gray-500 dark:text-gray-400">
                       {formatCurrency(account.openingBalance)}
                     </Table.BodyCell>
-                    <Table.BodyCell align="right" className="font-bold text-gray-900 dark:text-white">
+                    <Table.BodyCell
+                      align="right"
+                      className="font-bold text-gray-900 dark:text-white"
+                    >
                       {formatCurrency(account.currentBalance)}
                     </Table.BodyCell>
                     <Table.BodyCell>
@@ -394,8 +407,8 @@ const AccountList: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-300">
-            Are you sure you want to delete the account "{selectedAccount?.name}"?
-            This will mark the account as inactive.
+            Are you sure you want to delete the account "{selectedAccount?.name}"? This will mark
+            the account as inactive.
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)}>
