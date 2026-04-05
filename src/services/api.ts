@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // API base URL from environment variable
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || 'https://expense-backend-qywz.onrender.com/api';
 
 // Create axios instance
 const api = axios.create({
@@ -87,7 +88,8 @@ export const recurringTransactionAPI = {
   create: (data: any) => api.post('/recurring-transactions', data),
   getAll: () => api.get('/recurring-transactions'),
   getById: (recurringId: number) => api.get(`/recurring-transactions/${recurringId}`),
-  update: (recurringId: number, data: any) => api.put(`/recurring-transactions/${recurringId}`, data),
+  update: (recurringId: number, data: any) =>
+    api.put(`/recurring-transactions/${recurringId}`, data),
   delete: (recurringId: number) => api.delete(`/recurring-transactions/${recurringId}`),
 };
 
@@ -134,26 +136,26 @@ export const analyticsAPI = {
 
 // Export endpoints
 export const exportAPI = {
-  exportMonthlyReport: (yearMonth: string) => 
+  exportMonthlyReport: (yearMonth: string) =>
     api.get(`/export/report/excel?yearMonth=${yearMonth}`, {
       responseType: 'blob',
       headers: {
-        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      }
+        Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
     }),
-  exportComprehensiveReport: (yearMonth: string) => 
+  exportComprehensiveReport: (yearMonth: string) =>
     api.get(`/export/comprehensive/report/excel?yearMonth=${yearMonth}`, {
       responseType: 'blob',
       headers: {
-        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      }
+        Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
     }),
-  exportDashboardPDF: (yearMonth: string) => 
+  exportDashboardPDF: (yearMonth: string) =>
     api.get(`/export/comprehensive/report/pdf?yearMonth=${yearMonth}`, {
       responseType: 'blob',
       headers: {
-        'Accept': 'application/pdf'
-      }
+        Accept: 'application/pdf',
+      },
     }),
 };
 
@@ -172,15 +174,18 @@ export const accountAPI = {
     openingBalance: number;
     description?: string;
   }) => api.post('/accounts', data),
-  update: (accountId: number, data: {
-    name: string;
-    accountType: string;
-    bankName?: string;
-    accountNumber?: string;
-    ifscCode?: string;
-    openingBalance: number;
-    description?: string;
-  }) => api.put(`/accounts/${accountId}`, data),
+  update: (
+    accountId: number,
+    data: {
+      name: string;
+      accountType: string;
+      bankName?: string;
+      accountNumber?: string;
+      ifscCode?: string;
+      openingBalance: number;
+      description?: string;
+    },
+  ) => api.put(`/accounts/${accountId}`, data),
   delete: (accountId: number) => api.delete(`/accounts/${accountId}`),
   getTotalBalance: () => api.get('/accounts/total-balance'),
 };
