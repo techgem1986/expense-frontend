@@ -32,7 +32,7 @@ const validationSchema = yup.object().shape({
 interface TransactionFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: TransactionRequest) => void;
+  onSubmit: (_: TransactionRequest) => void;
   /** @deprecated This prop is currently not used but reserved for future edit functionality */
   transaction?: TransactionResponse | null;
   categories: Category[];

@@ -45,7 +45,7 @@ const validationSchema = yup.object().shape({
 interface RecurringTransactionFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (_: RecurringTransactionRequest) => void;
+  onSubmit: (data: RecurringTransactionRequest) => void;
   recurring?: RecurringTransactionResponse | null;
   categories: Category[];
   accounts: AccountSummary[];
