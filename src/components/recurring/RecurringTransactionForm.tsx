@@ -1,13 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Button, Input, Select } from '../ui';
 import { RecurringTransactionRequest, RecurringTransactionResponse, Category, Frequency } from '../../types';
 import { AccountSummary } from '../../types/account';
-
-// Special category ID for Money Transfer
-const MONEY_TRANSFER_CATEGORY_ID = -1;
 
 type RecurringFormData = {
   name: string;
@@ -18,9 +15,9 @@ type RecurringFormData = {
   dayOfMonth: number;
   startDate: string;
   endDate: string;
-  categoryId?: number | null;
-  fromAccountId?: number | null;
-  toAccountId?: number | null;
+  categoryId?: string | number | null;
+  fromAccountId?: string | number | null;
+  toAccountId?: string | number | null;
 };
 
 const validationSchema = yup.object().shape({
@@ -42,11 +39,7 @@ const validationSchema = yup.object().shape({
   endDate: yup.string(),
   categoryId: yup.number().optional().nullable(),
   fromAccountId: yup.number().optional().nullable(),
-  toAccountId: yup.number().when('categoryId', {
-    is: MONEY_TRANSFER_CATEGORY_ID,
-    then: (schema) => schema.required('To Account is required for Money Transfer'),
-    otherwise: (schema) => schema.optional().nullable(),
-  }),
+  toAccountId: yup.number().optional().nullable(),
 }) as any;
 
 interface RecurringTransactionFormProps {
@@ -68,7 +61,8 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
   accounts,
   isSubmitting = false,
 }) => {
-  const [isMoneyTransfer, setIsMoneyTransfer] = useState(false);
+  const [showToAccount, setShowToAccount] = useState(false);
+  const [accountError, setAccountError] = useState('');
 
   const {
     register,
@@ -94,39 +88,67 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
     },
   });
 
-  const watchedCategoryId = watch('categoryId');
+  const selectedType = watch('type');
+  const watchedCategoryIdRaw = watch('categoryId');
+  const fromAccountId = watch('fromAccountId');
+  const toAccountId = watch('toAccountId');
 
+  // Find Money Transfer category ID from the categories list
+  const moneyTransferCategoryId = useMemo(() => {
+    const mtCategory = categories.find(cat => cat.name.toLowerCase() === 'money transfer');
+    return mtCategory?.id;
+  }, [categories]);
+
+  // Check if Money Transfer category is selected
+  const isMoneyTransferCategory = useMemo(() => {
+    if (watchedCategoryIdRaw === undefined || watchedCategoryIdRaw === null) return false;
+    const categoryIdNum = Number(watchedCategoryIdRaw);
+    return moneyTransferCategoryId !== undefined && categoryIdNum === moneyTransferCategoryId;
+  }, [watchedCategoryIdRaw, moneyTransferCategoryId]);
+
+  // Show To Account for INCOME transactions or when Money Transfer category is selected
   useEffect(() => {
-    // Check if Money Transfer is selected
-    setIsMoneyTransfer(watchedCategoryId === MONEY_TRANSFER_CATEGORY_ID);
-    
-    // Clear toAccountId when category changes away from Money Transfer
-    if (!isMoneyTransfer && watchedCategoryId !== MONEY_TRANSFER_CATEGORY_ID) {
+    const isIncome = selectedType === 'INCOME';
+    setShowToAccount(isIncome || isMoneyTransferCategory);
+  }, [selectedType, isMoneyTransferCategory]);
+
+  // Clear toAccountId when To Account should not be shown
+  useEffect(() => {
+    const isIncome = selectedType === 'INCOME';
+    if (!isIncome && !isMoneyTransferCategory) {
       setValue('toAccountId', undefined);
     }
-  }, [watchedCategoryId, isMoneyTransfer, setValue]);
+  }, [selectedType, isMoneyTransferCategory, setValue]);
 
+  // Validate that From and To accounts are different when both are shown
+  useEffect(() => {
+    if (fromAccountId && toAccountId && fromAccountId === toAccountId) {
+      setAccountError('From Account and To Account cannot be the same');
+    } else {
+      setAccountError('');
+    }
+  }, [fromAccountId, toAccountId]);
+
+  // Load recurring transaction data for editing
   useEffect(() => {
     if (recurring) {
       setValue('name', recurring.name);
       setValue('amount', recurring.amount);
+      // For existing Money Transfer (detected by accounts), keep the type as EXPENSE
       setValue('type', recurring.type);
       setValue('description', recurring.description || '');
       setValue('frequency', recurring.frequency);
       setValue('dayOfMonth', recurring.dayOfMonth);
       setValue('startDate', recurring.startDate);
       setValue('endDate', recurring.endDate || '');
-      setValue('categoryId', recurring.category?.id || undefined);
+      // Set categoryId from the recurring transaction
+      if (moneyTransferCategoryId !== undefined && recurring.category?.name?.toLowerCase() === 'money transfer') {
+        setValue('categoryId', moneyTransferCategoryId);
+      } else {
+        setValue('categoryId', recurring.category?.id || undefined);
+      }
       setValue('fromAccountId', recurring.fromAccount?.id || undefined);
       setValue('toAccountId', recurring.toAccount?.id || undefined);
-      
-      // Check if this is a money transfer
-      const isMoneyTransferCategory = categories.some(
-        (cat) => cat.id === recurring.category?.id && cat.name.toLowerCase() === 'money transfer'
-      );
-      // Also check if fromAccount or toAccount exists (for backward compatibility)
-      const hasAccounts = !!(recurring.fromAccount || recurring.toAccount);
-      setIsMoneyTransfer(isMoneyTransferCategory || hasAccounts);
     } else {
       reset();
       setValue('startDate', new Date().toISOString().split('T')[0]);
@@ -134,32 +156,50 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
       setValue('frequency', 'MONTHLY');
       setValue('fromAccountId', undefined);
       setValue('toAccountId', undefined);
-      setIsMoneyTransfer(false);
     }
-  }, [recurring, open, setValue, reset, categories]);
+  }, [recurring, open, setValue, reset, moneyTransferCategoryId]);
 
   const handleFormSubmit: SubmitHandler<RecurringFormData> = (data) => {
+    const backendType = data.type as 'INCOME' | 'EXPENSE';
+
+    // Convert categoryId to number
+    let categoryIdNum: number | undefined = undefined;
+    if (data.categoryId !== undefined && data.categoryId !== null) {
+      categoryIdNum = Number(data.categoryId);
+    }
+
+    // Convert account IDs to numbers
+    const fromAccountIdNum = data.fromAccountId !== undefined && data.fromAccountId !== null && data.fromAccountId !== ''
+      ? Number(data.fromAccountId)
+      : undefined;
+    const toAccountIdNum = data.toAccountId !== undefined && data.toAccountId !== null && data.toAccountId !== ''
+      ? Number(data.toAccountId)
+      : undefined;
+
     const request: RecurringTransactionRequest = {
       name: data.name,
       amount: data.amount,
-      type: data.type as 'INCOME' | 'EXPENSE',
+      type: backendType,
       description: data.description,
       frequency: data.frequency as Frequency,
       dayOfMonth: data.dayOfMonth,
       startDate: data.startDate,
       endDate: data.endDate || undefined,
-      categoryId: data.categoryId === MONEY_TRANSFER_CATEGORY_ID ? undefined : (data.categoryId ?? undefined),
-      fromAccountId: data.fromAccountId ?? undefined,
-      toAccountId: data.toAccountId ?? undefined,
+      categoryId: categoryIdNum,
+      fromAccountId: fromAccountIdNum,
+      toAccountId: toAccountIdNum,
     };
     onSubmit(request);
   };
 
-  // Create combined categories list with Money Transfer option
-  const getCategoriesWithMoneyTransfer = () => {
-    const moneyTransferOption = { id: MONEY_TRANSFER_CATEGORY_ID, name: 'Money Transfer', type: 'EXPENSE' as const };
-    return [moneyTransferOption, ...categories];
-  };
+  // Filter categories based on type
+  const filteredCategories = useMemo(() => {
+    if (selectedType === 'INCOME') {
+      return categories.filter(cat => cat.type === 'INCOME');
+    } else {
+      return categories.filter(cat => cat.type === 'EXPENSE');
+    }
+  }, [categories, selectedType]);
 
   return (
     <div className="space-y-4">
@@ -263,7 +303,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
           className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
         >
           <option value="">None</option>
-          {getCategoriesWithMoneyTransfer().map((cat) => (
+          {filteredCategories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name}
             </option>
@@ -271,29 +311,34 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
         </select>
       </div>
 
-      {/* To Account - Only visible for Money Transfer */}
-      {isMoneyTransfer && (
+      {/* To Account - Visible for INCOME, Money Transfer type, or when Money Transfer category is selected */}
+      {showToAccount && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            To Account
+            To Account *
           </label>
           <select
             {...register('toAccountId')}
             className={`w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 ${
-              errors.toAccountId
+              errors.toAccountId || accountError
                 ? 'border-danger-500 dark:border-danger-500'
                 : 'border-gray-300 dark:border-gray-600'
             }`}
           >
             <option value="">Select Account</option>
-            {Array.isArray(accounts) && accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} ({account.accountType})
-              </option>
-            ))}
+            {Array.isArray(accounts) && accounts
+              .filter((account) => account.id !== fromAccountId)
+              .map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.accountType})
+                </option>
+              ))}
           </select>
           {errors.toAccountId && (
             <p className="mt-1 text-xs text-danger-500">{errors.toAccountId.message}</p>
+          )}
+          {accountError && (
+            <p className="mt-1 text-xs text-danger-500">{accountError}</p>
           )}
         </div>
       )}

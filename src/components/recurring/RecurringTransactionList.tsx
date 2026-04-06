@@ -127,12 +127,14 @@ const RecurringTransactionList: React.FC = () => {
   };
 
   const getCategoryName = (recurringItem: RecurringTransactionResponse): string => {
-    if (recurringItem.fromAccount || recurringItem.toAccount) {
-      return 'Money Transfer';
+    // First check if category exists and get its name
+    if (recurringItem.category?.id) {
+      const category = categories.find((c) => c.id === recurringItem.category?.id);
+      if (category) {
+        return category.name;
+      }
     }
-    if (!recurringItem.category?.id) return 'Uncategorized';
-    const category = categories.find((c) => c.id === recurringItem.category?.id);
-    return category ? category.name : 'Uncategorized';
+    return 'Uncategorized';
   };
 
   const getAccountInfo = (recurringItem: RecurringTransactionResponse): string => {

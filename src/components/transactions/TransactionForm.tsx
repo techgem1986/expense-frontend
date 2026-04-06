@@ -6,8 +6,6 @@ import { Button, Input, Select } from '../ui';
 import { TransactionRequest, TransactionResponse, Category } from '../../types';
 import { Account } from '../../types/account';
 
-const MONEY_TRANSFER_CATEGORY_ID = -1;
-
 type TransactionFormData = {
   amount: number;
   type: string;
@@ -73,22 +71,43 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   });
 
   const selectedType = watch('type');
-  const selectedCategoryId = watch('categoryId');
+  const selectedCategoryIdRaw = watch('categoryId') as string | number | null | undefined;
   const fromAccountId = watch('fromAccountId');
   const toAccountId = watch('toAccountId');
 
-  // Determine if To Account should be shown
+  // Find Money Transfer category ID from the categories list
+  const moneyTransferCategoryId = useMemo(() => {
+    const mtCategory = categories.find(cat => cat.name.toLowerCase() === 'money transfer');
+    return mtCategory?.id;
+  }, [categories]);
+
+  // Check if Money Transfer category is selected
+  const isMoneyTransferCategory = useMemo(() => {
+    if (selectedCategoryIdRaw === undefined || selectedCategoryIdRaw === null || selectedCategoryIdRaw === '') return false;
+    const categoryIdNum = Number(selectedCategoryIdRaw);
+    return moneyTransferCategoryId !== undefined && categoryIdNum === moneyTransferCategoryId;
+  }, [JSON.stringify(selectedCategoryIdRaw), moneyTransferCategoryId]);
+
+  // Show To Account for INCOME transactions or when Money Transfer category is selected
   useEffect(() => {
     const isIncome = selectedType === 'INCOME';
-    const isMoneyTransfer = selectedCategoryId === MONEY_TRANSFER_CATEGORY_ID;
-    
-    // Show To Account for INCOME transactions or when Money Transfer is selected
-    setShowToAccount(isIncome || isMoneyTransfer);
-    
-    if (!isIncome && !isMoneyTransfer) {
+    setShowToAccount(isIncome || isMoneyTransferCategory);
+  }, [selectedType, isMoneyTransferCategory]);
+
+  // Handle type changes - clear Money Transfer category for INCOME
+  useEffect(() => {
+    if (selectedType === 'INCOME' && isMoneyTransferCategory) {
+      setValue('categoryId', undefined);
+    }
+  }, [selectedType, isMoneyTransferCategory, setValue]);
+
+  // Clear toAccountId when To Account should not be shown
+  useEffect(() => {
+    const isIncome = selectedType === 'INCOME';
+    if (!isIncome && !isMoneyTransferCategory) {
       setValue('toAccountId', undefined);
     }
-  }, [selectedType, selectedCategoryId, setValue]);
+  }, [selectedType, isMoneyTransferCategory, setValue]);
 
   // Validate that From and To accounts are different when both are shown
   useEffect(() => {
@@ -123,12 +142,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
 
+    const backendType = data.type as 'INCOME' | 'EXPENSE';
+
+    // Convert categoryId to number
+    let categoryIdNum: number | undefined = undefined;
+    if (data.categoryId !== undefined && data.categoryId !== null) {
+      categoryIdNum = Number(data.categoryId);
+    }
+
     const request: TransactionRequest = {
       amount: data.amount.toString(),
-      type: data.type as 'INCOME' | 'EXPENSE',
+      type: backendType,
       description: data.description,
       transactionDate: data.transactionDate,
-      categoryId: data.categoryId === MONEY_TRANSFER_CATEGORY_ID ? undefined : data.categoryId || undefined,
+      categoryId: categoryIdNum,
       fromAccountId: data.fromAccountId || undefined,
       toAccountId: showToAccount ? (data.toAccountId || undefined) : undefined,
     };
@@ -136,9 +163,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     onSubmit(request);
   };
 
+  // Filter categories based on type
   const filteredCategories = useMemo(() => {
-    const typeFilter = selectedType === 'INCOME' ? 'INCOME' : 'EXPENSE';
-    return categories.filter((cat) => cat.type === typeFilter);
+    if (selectedType === 'INCOME') {
+      return categories.filter(cat => cat.type === 'INCOME');
+    } else {
+      return categories.filter(cat => cat.type === 'EXPENSE');
+    }
   }, [categories, selectedType]);
 
   const activeAccounts = useMemo(() => {
@@ -178,7 +209,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         {...register('transactionDate')}
       />
 
-      {/* From Account - shown only for EXPENSE transactions */}
+      {/* From Account - shown for EXPENSE transactions */}
       {selectedType === 'EXPENSE' && (
         <div>
           <label htmlFor="fromAccountId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -217,9 +248,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
         >
           <option value="">None</option>
-          {selectedType === 'EXPENSE' && (
-            <option value={MONEY_TRANSFER_CATEGORY_ID}>Money Transfer</option>
-          )}
           {filteredCategories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name}
