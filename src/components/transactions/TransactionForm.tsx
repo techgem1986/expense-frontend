@@ -86,7 +86,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     if (selectedCategoryIdRaw === undefined || selectedCategoryIdRaw === null || selectedCategoryIdRaw === '') return false;
     const categoryIdNum = Number(selectedCategoryIdRaw);
     return moneyTransferCategoryId !== undefined && categoryIdNum === moneyTransferCategoryId;
-  }, [JSON.stringify(selectedCategoryIdRaw), moneyTransferCategoryId]);
+  }, [selectedCategoryIdRaw, moneyTransferCategoryId]);
 
   // Show To Account for INCOME transactions or when Money Transfer category is selected
   useEffect(() => {
