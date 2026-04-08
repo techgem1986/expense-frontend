@@ -54,7 +54,13 @@ export const userAPI = {
 
 // Category endpoints
 export const categoryAPI = {
-  getAll: () => api.get('/categories'),
+  getAll: (page = 0, size = 20, sort = 'createdAt,desc') => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    params.append('sort', sort);
+    return api.get(`/categories?${params.toString()}`);
+  },
   getByType: (type: 'INCOME' | 'EXPENSE') => api.get(`/categories/type/${type}`),
   getById: (categoryId: string) => api.get(`/categories/${categoryId}`),
   create: (data: { name: string; description?: string; type: 'INCOME' | 'EXPENSE' }) =>
@@ -69,13 +75,25 @@ export const categoryAPI = {
 // Transaction endpoints
 export const transactionAPI = {
   create: (data: any) => api.post('/transactions', data),
-  getAll: (page = 0, size = 20, sort = 'createdAt,desc', startDate?: string, endDate?: string) => {
+  getAll: (
+    page = 0, 
+    size = 20, 
+    sort = 'createdAt,desc', 
+    startDate?: string, 
+    endDate?: string,
+    search?: string,
+    type?: string,
+    categoryId?: string
+  ) => {
     const params = new URLSearchParams();
     params.append('page', String(page));
     params.append('size', String(size));
     params.append('sort', sort);
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
+    if (search) params.append('search', search);
+    if (type) params.append('type', type);
+    if (categoryId) params.append('categoryId', categoryId);
     return api.get(`/transactions?${params.toString()}`);
   },
   getById: (transactionId: number) => api.get(`/transactions/${transactionId}`),
@@ -86,7 +104,13 @@ export const transactionAPI = {
 // Recurring Transaction endpoints
 export const recurringTransactionAPI = {
   create: (data: any) => api.post('/recurring-transactions', data),
-  getAll: () => api.get('/recurring-transactions'),
+  getAll: (page = 0, size = 20, sort = 'createdAt,desc') => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    params.append('sort', sort);
+    return api.get(`/recurring-transactions?${params.toString()}`);
+  },
   getById: (recurringId: number) => api.get(`/recurring-transactions/${recurringId}`),
   update: (recurringId: number, data: any) =>
     api.put(`/recurring-transactions/${recurringId}`, data),

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Wallet } from 'lucide-react';
-import { Card, Button, Badge, Table, Modal, Input, Select } from '../ui';
+import { Card, Button, Badge, Table, Modal, Input, Select, Pagination } from '../ui';
 import { Account, AccountRequest, AccountTypeDisplayNames } from '../../types/account';
 import { accountAPI } from '../../services/api';
 import { useCurrency } from '../../contexts/CurrencyContext';
@@ -23,6 +23,8 @@ const AccountList: React.FC = () => {
     message: '',
     type: 'success' as 'success' | 'error',
   });
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [formData, setFormData] = useState<AccountFormData>({
     name: '',
     accountType: 'SAVINGS',
@@ -35,9 +37,10 @@ const AccountList: React.FC = () => {
 
   const fetchAccounts = async () => {
     try {
-      const response = await accountAPI.getAll();
+      const response = await accountAPI.getAll(page, 20, 'createdAt,desc');
       if (response.data.success) {
         setAccounts(response.data.data.content || []);
+        setTotalPages(response.data.data.totalPages || 0);
       }
     } catch (error) {
       console.error('Error fetching accounts:', error);
@@ -48,7 +51,7 @@ const AccountList: React.FC = () => {
 
   useEffect(() => {
     fetchAccounts();
-  }, []);
+  }, [page]);
 
   const handleOpenDialog = (account?: Account) => {
     if (account) {
@@ -315,9 +318,16 @@ const AccountList: React.FC = () => {
                 ))}
               </Table.Body>
             </Table>
-          </Table.Container>
-        </>
-      )}
+           </Table.Container>
+
+           {/* Pagination */}
+           <Pagination
+             currentPage={page}
+             totalPages={totalPages}
+             onPageChange={setPage}
+           />
+         </>
+       )}
 
       {/* Add/Edit Account Modal */}
       <Modal

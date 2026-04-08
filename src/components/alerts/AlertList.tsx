@@ -4,6 +4,7 @@ import {
   Badge,
   Table,
   Modal,
+  Pagination,
 } from '../ui';
 import { AlertResponse } from '../../types';
 import { alertAPI } from '../../services/api';
@@ -211,31 +212,11 @@ const AlertList: React.FC = () => {
       </Table.Container>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Page {page + 1} of {totalPages}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal

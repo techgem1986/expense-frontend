@@ -5,6 +5,7 @@ import {
   Badge,
   Table,
   Modal,
+  Pagination,
 } from '../ui';
 import { Category, CategoryUpdateRequest, CategoryFormData } from '../../types';
 import { categoryAPI } from '../../services/api';
@@ -22,19 +23,20 @@ const CategoryList: React.FC = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [page]);
 
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const response = await categoryAPI.getAll();
-      if (Array.isArray(response.data)) {
-        setCategories(response.data);
-      } else if (response.data && Array.isArray(response.data.data)) {
-        setCategories(response.data.data);
+      const response = await categoryAPI.getAll(page, 20, 'createdAt,desc');
+      if (response.data && response.data.data) {
+        setCategories(response.data.data.content || []);
+        setTotalPages(response.data.data.totalPages || 0);
       } else {
         setCategories([]);
         setError('Unexpected categories response format');
@@ -224,9 +226,16 @@ const CategoryList: React.FC = () => {
             )}
           </Table.Body>
         </Table>
-      </Table.Container>
+       </Table.Container>
 
-      {/* Category Form Modal */}
+       {/* Pagination */}
+       <Pagination
+         currentPage={page}
+         totalPages={totalPages}
+         onPageChange={setPage}
+       />
+
+       {/* Category Form Modal */}
       <Modal
         isOpen={openForm}
         onClose={() => !submitting && setOpenForm(false)}

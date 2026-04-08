@@ -5,6 +5,7 @@ import {
   Badge,
   Table,
   Modal,
+  Pagination,
 } from '../ui';
 import { RecurringTransactionResponse, RecurringTransactionRequest, Category } from '../../types';
 import { AccountSummary } from '../../types/account';
@@ -26,12 +27,14 @@ const RecurringTransactionList: React.FC = () => {
   const [recurringToDelete, setRecurringToDelete] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<AccountSummary[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchCategories();
     fetchAccounts();
     fetchRecurringTransactions();
-  }, []);
+  }, [page]);
 
   const fetchCategories = async () => {
     try {
@@ -64,9 +67,11 @@ const RecurringTransactionList: React.FC = () => {
   const fetchRecurringTransactions = async () => {
     setLoading(true);
     try {
-      const response = await recurringTransactionAPI.getAll();
-      const data = Array.isArray(response.data) ? response.data : response.data?.data || [];
-      setRecurring(data);
+      const response = await recurringTransactionAPI.getAll(page, 20, 'createdAt,desc');
+      if (response.data && response.data.data) {
+        setRecurring(response.data.data.content || []);
+        setTotalPages(response.data.data.totalPages || 0);
+      }
       setError(null);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to fetch recurring transactions'));
@@ -266,9 +271,16 @@ const RecurringTransactionList: React.FC = () => {
             )}
           </Table.Body>
         </Table>
-      </Table.Container>
+       </Table.Container>
 
-      {/* Recurring Transaction Form Modal */}
+       {/* Pagination */}
+       <Pagination
+         currentPage={page}
+         totalPages={totalPages}
+         onPageChange={setPage}
+       />
+
+       {/* Recurring Transaction Form Modal */}
       <Modal
         isOpen={openForm}
         onClose={() => !submitting && handleCloseForm()}

@@ -15,6 +15,7 @@ export {
 } from './Table';
 export { Modal, ModalFooter } from './Modal';
 export { default as DateRangeFilter } from './DateRangeFilter';
+export { default as Pagination } from './Pagination';
 export {
   getCurrentMonthStart,
   getCurrentMonthEnd,

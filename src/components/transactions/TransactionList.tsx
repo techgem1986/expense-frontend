@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Edit2, Trash2, Calendar, Filter } from 'lucide-react';
+import { Edit2, Trash2, Calendar } from 'lucide-react';
 import {
   Card,
   Button,
   Badge,
   Table,
   Modal,
-  Input,
-  Select,
 } from '../ui';
 import DateRangeFilter, {
   getCurrentMonthStart,
@@ -246,33 +244,6 @@ const TransactionList: React.FC = () => {
           onPreviousMonth={handlePreviousMonth}
           onNextMonth={handleNextMonth}
         />
-      </Card>
-
-      {/* Filters Card */}
-      <Card padding="md">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Input
-              placeholder="Search transactions..."
-              leftIcon={<Filter className="w-4 h-4" />}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Select
-              options={[
-                { value: '', label: 'All Types' },
-                { value: 'INCOME', label: 'Income' },
-                { value: 'EXPENSE', label: 'Expense' },
-              ]}
-            />
-            <Select
-              options={[
-                { value: '', label: 'All Categories' },
-                ...categories.map((c) => ({ value: String(c.id), label: c.name })),
-              ]}
-            />
-          </div>
-        </div>
       </Card>
 
       {/* Transactions Table */}
