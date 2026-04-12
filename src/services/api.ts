@@ -61,6 +61,13 @@ export const categoryAPI = {
     params.append('sort', sort);
     return api.get(`/categories?${params.toString()}`);
   },
+  getAllPaginated: (page = 0, size = 20, sort = 'createdAt,desc') => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    params.append('sort', sort);
+    return api.get(`/categories/paginated?${params.toString()}`);
+  },
   getByType: (type: 'INCOME' | 'EXPENSE') => api.get(`/categories/type/${type}`),
   getById: (categoryId: string) => api.get(`/categories/${categoryId}`),
   create: (data: { name: string; description?: string; type: 'INCOME' | 'EXPENSE' }) =>
@@ -76,14 +83,14 @@ export const categoryAPI = {
 export const transactionAPI = {
   create: (data: any) => api.post('/transactions', data),
   getAll: (
-    page = 0, 
-    size = 20, 
-    sort = 'createdAt,desc', 
-    startDate?: string, 
+    page = 0,
+    size = 20,
+    sort = 'createdAt,desc',
+    startDate?: string,
     endDate?: string,
     search?: string,
     type?: string,
-    categoryId?: string
+    categoryId?: string,
   ) => {
     const params = new URLSearchParams();
     params.append('page', String(page));
@@ -110,6 +117,13 @@ export const recurringTransactionAPI = {
     params.append('size', String(size));
     params.append('sort', sort);
     return api.get(`/recurring-transactions?${params.toString()}`);
+  },
+  getAllPaginated: (page = 0, size = 20, sort = 'createdAt,desc') => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    params.append('sort', sort);
+    return api.get(`/recurring-transactions/paginated?${params.toString()}`);
   },
   getById: (recurringId: number) => api.get(`/recurring-transactions/${recurringId}`),
   update: (recurringId: number, data: any) =>

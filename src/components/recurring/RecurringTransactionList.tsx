@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Repeat, RefreshCw } from 'lucide-react';
-import {
-  Button,
-  Badge,
-  Table,
-  Modal,
-  Pagination,
-} from '../ui';
+import { Button, Badge, Table, Modal, Pagination } from '../ui';
 import { RecurringTransactionResponse, RecurringTransactionRequest, Category } from '../../types';
 import { AccountSummary } from '../../types/account';
 import { recurringTransactionAPI, categoryAPI, accountAPI } from '../../services/api';
@@ -22,7 +16,9 @@ const RecurringTransactionList: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
-  const [editingRecurring, setEditingRecurring] = useState<RecurringTransactionResponse | null>(null);
+  const [editingRecurring, setEditingRecurring] = useState<RecurringTransactionResponse | null>(
+    null,
+  );
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [recurringToDelete, setRecurringToDelete] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -67,12 +63,20 @@ const RecurringTransactionList: React.FC = () => {
   const fetchRecurringTransactions = async () => {
     setLoading(true);
     try {
-      const response = await recurringTransactionAPI.getAll(page, 20, 'createdAt,desc');
+      const response = await recurringTransactionAPI.getAllPaginated(page, 20, 'createdAt,desc');
       if (response.data && response.data.data) {
-        setRecurring(response.data.data.content || []);
-        setTotalPages(response.data.data.totalPages || 0);
+        // Check if it's a PagedResponse or a simple list
+        if (response.data.data.content) {
+          setRecurring(response.data.data.content || []);
+          setTotalPages(response.data.data.totalPages || 0);
+        } else {
+          setRecurring(response.data.data || []);
+          setTotalPages(1);
+        }
+      } else {
+        setRecurring([]);
+        setError('Unexpected recurring transactions response format');
       }
-      setError(null);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to fetch recurring transactions'));
     } finally {
@@ -177,10 +181,7 @@ const RecurringTransactionList: React.FC = () => {
             Manage automatic recurring payments and income
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenForm()}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
+        <Button onClick={() => handleOpenForm()} leftIcon={<Plus className="w-4 h-4" />}>
           Add Recurring
         </Button>
       </div>
@@ -213,20 +214,18 @@ const RecurringTransactionList: React.FC = () => {
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <Repeat className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                     <p>No recurring transactions found</p>
-                    <p className="text-sm mt-1">Set up recurring transactions for automatic tracking</p>
+                    <p className="text-sm mt-1">
+                      Set up recurring transactions for automatic tracking
+                    </p>
                   </div>
                 </Table.BodyCell>
               </Table.Row>
             ) : (
               recurring.map((rec) => (
                 <Table.Row key={rec.id}>
-                  <Table.BodyCell className="font-medium">
-                    {rec.name}
-                  </Table.BodyCell>
+                  <Table.BodyCell className="font-medium">{rec.name}</Table.BodyCell>
                   <Table.BodyCell>
-                    <Badge variant="neutral">
-                      {getCategoryName(rec)}
-                    </Badge>
+                    <Badge variant="neutral">{getCategoryName(rec)}</Badge>
                   </Table.BodyCell>
                   <Table.BodyCell className="text-sm text-gray-500 dark:text-gray-400">
                     {getAccountInfo(rec)}
@@ -240,9 +239,7 @@ const RecurringTransactionList: React.FC = () => {
                       {rec.frequency}
                     </span>
                   </Table.BodyCell>
-                  <Table.BodyCell>
-                    {formatDate(rec.nextExecutionDate)}
-                  </Table.BodyCell>
+                  <Table.BodyCell>{formatDate(rec.nextExecutionDate)}</Table.BodyCell>
                   <Table.BodyCell>
                     <Badge variant={rec.isActive ? 'success' : 'neutral'}>
                       {rec.isActive ? 'Active' : 'Inactive'}
@@ -271,16 +268,12 @@ const RecurringTransactionList: React.FC = () => {
             )}
           </Table.Body>
         </Table>
-       </Table.Container>
+      </Table.Container>
 
-       {/* Pagination */}
-       <Pagination
-         currentPage={page}
-         totalPages={totalPages}
-         onPageChange={setPage}
-       />
+      {/* Pagination */}
+      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
 
-       {/* Recurring Transaction Form Modal */}
+      {/* Recurring Transaction Form Modal */}
       <Modal
         isOpen={openForm}
         onClose={() => !submitting && handleCloseForm()}
@@ -307,10 +300,15 @@ const RecurringTransactionList: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-300">
-            Are you sure you want to delete this recurring transaction? This action cannot be undone.
+            Are you sure you want to delete this recurring transaction? This action cannot be
+            undone.
           </p>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
+            <Button
+              variant="secondary"
+              onClick={() => setOpenDeleteDialog(false)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
             <Button variant="danger" onClick={confirmDeleteRecurring} loading={deleting}>

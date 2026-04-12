@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Tags } from 'lucide-react';
-import {
-  Button,
-  Badge,
-  Table,
-  Modal,
-  Pagination,
-} from '../ui';
+import { Button, Badge, Table, Modal, Pagination } from '../ui';
 import { Category, CategoryUpdateRequest, CategoryFormData } from '../../types';
 import { categoryAPI } from '../../services/api';
 import { getErrorMessage } from '../../services/errorUtils';
@@ -35,8 +29,14 @@ const CategoryList: React.FC = () => {
     try {
       const response = await categoryAPI.getAll(page, 20, 'createdAt,desc');
       if (response.data && response.data.data) {
-        setCategories(response.data.data.content || []);
-        setTotalPages(response.data.data.totalPages || 0);
+        // Check if it's a PagedResponse or a simple list
+        if (response.data.data.content) {
+          setCategories(response.data.data.content || []);
+          setTotalPages(response.data.data.totalPages || 0);
+        } else {
+          setCategories(response.data.data || []);
+          setTotalPages(1);
+        }
       } else {
         setCategories([]);
         setError('Unexpected categories response format');
@@ -142,17 +142,12 @@ const CategoryList: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Categories
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Organize your transactions with custom categories
           </p>
         </div>
-        <Button
-          onClick={handleAddCategory}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
+        <Button onClick={handleAddCategory} leftIcon={<Plus className="w-4 h-4" />}>
           Add Category
         </Button>
       </div>
@@ -182,16 +177,16 @@ const CategoryList: React.FC = () => {
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <Tags className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                     <p>No categories found</p>
-                    <p className="text-sm mt-1">Create your first category to organize transactions</p>
+                    <p className="text-sm mt-1">
+                      Create your first category to organize transactions
+                    </p>
                   </div>
                 </Table.BodyCell>
               </Table.Row>
             ) : (
               categories.map((category) => (
                 <Table.Row key={category.id}>
-                  <Table.BodyCell className="font-medium">
-                    {category.name}
-                  </Table.BodyCell>
+                  <Table.BodyCell className="font-medium">{category.name}</Table.BodyCell>
                   <Table.BodyCell className="text-gray-500 dark:text-gray-400">
                     {category.description || '-'}
                   </Table.BodyCell>
@@ -226,16 +221,12 @@ const CategoryList: React.FC = () => {
             )}
           </Table.Body>
         </Table>
-       </Table.Container>
+      </Table.Container>
 
-       {/* Pagination */}
-       <Pagination
-         currentPage={page}
-         totalPages={totalPages}
-         onPageChange={setPage}
-       />
+      {/* Pagination */}
+      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
 
-       {/* Category Form Modal */}
+      {/* Category Form Modal */}
       <Modal
         isOpen={openForm}
         onClose={() => !submitting && setOpenForm(false)}
@@ -266,7 +257,11 @@ const CategoryList: React.FC = () => {
             Are you sure you want to delete this category? This action cannot be undone.
           </p>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
+            <Button
+              variant="secondary"
+              onClick={() => setOpenDeleteDialog(false)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
             <Button variant="danger" onClick={confirmDeleteCategory} loading={deleting}>
