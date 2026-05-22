@@ -5,7 +5,17 @@ import tsParser from '@typescript-eslint/parser';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 
 // Exclude config and test files from main linting
-const ignorePatterns = ['eslint.config.js', '.eslintrc.js', 'jest.config.js', 'vite.config.*', 'node_modules/', 'build/', 'dist/'];
+const ignorePatterns = [
+  'eslint.config.js',
+  '.eslintrc.js',
+  'jest.config.js',
+  'vite.config.*',
+  'tailwind.config.js',
+  'postcss.config.js',
+  'node_modules/',
+  'build/',
+  'dist/',
+];
 
 /** @type {import('eslint').Linter.FlatConfig[]} */
 export default [
@@ -44,7 +54,7 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       'jsx-a11y': jsxA11y,
-      'react': react,
+      react: react,
     },
     rules: {
       'react/prop-types': 'off',
@@ -52,6 +62,11 @@ export default [
       'react/react-in-jsx-scope': 'off',
       'jsx-a11y/anchor-is-valid': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
   // Test files config (Jest)

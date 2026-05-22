@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Tags } from 'lucide-react';
 import { Button, Badge, Table, Modal, Pagination } from '../ui';
 import { Category, CategoryUpdateRequest, CategoryFormData } from '../../types';
@@ -20,11 +20,7 @@ const CategoryList: React.FC = () => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [page]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
       const response = await categoryAPI.getAll(page, 20, 'createdAt,desc');
@@ -46,7 +42,11 @@ const CategoryList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handleAddCategory = () => {
     setEditingCategory(null);

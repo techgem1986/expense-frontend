@@ -3,42 +3,35 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import Layout from './layouts/Layout';
+import AppShell from './components/ui/AppShell';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import CategoryList from './components/categories/CategoryList';
-import TransactionList from './components/transactions/TransactionList';
-import RecurringTransactionList from './components/recurring/RecurringTransactionList';
-import BudgetList from './components/budgets/BudgetList';
-import AlertList from './components/alerts/AlertList';
-import Dashboard from './components/analytics/Dashboard';
-import AccountList from './components/accounts/AccountList';
+import Dashboard from './pages/Dashboard';
+import Transactions from './pages/Transactions';
+import Budgets from './pages/Budgets';
+import Analytics from './pages/Analytics';
+import Accounts from './pages/Accounts';
+import RecurringTransactions from './pages/RecurringTransactions';
+import Categories from './pages/Categories';
+import Alerts from './pages/Alerts';
 import './index.css';
 
-// Protected Route component - allows authenticated users to access any screen directly
+const LoadingScreen = () => (
+  <div className="flex items-center justify-center h-screen bg-bg-deep">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neon-cyan mx-auto mb-4" />
+      <p className="text-white/60 font-display">Loading...</p>
+    </div>
+  </div>
+);
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  // Show loading spinner while checking authentication status
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
+  if (user) return <>{children}</>;
 
-  // If user is authenticated, allow access to the requested screen
-  if (user) {
-    return <>{children}</>;
-  }
-
-  // If not authenticated, redirect to login with return URL
-  // This ensures proper error message is shown on login page
   return (
     <Navigate
       to="/login"
@@ -48,29 +41,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   );
 };
 
-// Public Route component - Login and Register pages are publicly accessible
-// If user is already logged in, redirect to dashboard
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
-  // Show loading spinner while checking authentication status
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
+  if (user) return <Navigate to="/dashboard" replace />;
 
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // Otherwise, show the public page (login/register)
   return <>{children}</>;
 };
 
@@ -99,7 +75,7 @@ function App() {
                 }
               />
 
-              {/* Protected routes */}
+              {/* Root redirect */}
               <Route
                 path="/"
                 element={
@@ -108,23 +84,15 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* All protected app routes */}
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Layout>
+                    <AppShell>
                       <Dashboard />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/analytics"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Dashboard />
-                    </Layout>
+                    </AppShell>
                   </ProtectedRoute>
                 }
               />
@@ -132,19 +100,9 @@ function App() {
                 path="/transactions"
                 element={
                   <ProtectedRoute>
-                    <Layout>
-                      <TransactionList />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/recurring-transactions"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <RecurringTransactionList />
-                    </Layout>
+                    <AppShell>
+                      <Transactions />
+                    </AppShell>
                   </ProtectedRoute>
                 }
               />
@@ -152,29 +110,19 @@ function App() {
                 path="/budgets"
                 element={
                   <ProtectedRoute>
-                    <Layout>
-                      <BudgetList />
-                    </Layout>
+                    <AppShell>
+                      <Budgets />
+                    </AppShell>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/alerts"
+                path="/analytics"
                 element={
                   <ProtectedRoute>
-                    <Layout>
-                      <AlertList />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/categories"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <CategoryList />
-                    </Layout>
+                    <AppShell>
+                      <Analytics />
+                    </AppShell>
                   </ProtectedRoute>
                 }
               />
@@ -182,9 +130,49 @@ function App() {
                 path="/accounts"
                 element={
                   <ProtectedRoute>
-                    <Layout>
-                      <AccountList />
-                    </Layout>
+                    <AppShell>
+                      <Accounts />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recurring"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <RecurringTransactions />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/categories"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <Categories />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/alerts"
+                element={
+                  <ProtectedRoute>
+                    <AppShell>
+                      <Alerts />
+                    </AppShell>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Catch-all */}
+              <Route
+                path="*"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/dashboard" replace />
                   </ProtectedRoute>
                 }
               />

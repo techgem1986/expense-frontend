@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Wallet } from 'lucide-react';
 import { Card, Button, Badge, Table, Modal, Input, Select, Pagination } from '../ui';
 import { Account, AccountRequest, AccountTypeDisplayNames } from '../../types/account';
@@ -35,7 +35,7 @@ const AccountList: React.FC = () => {
     description: '',
   });
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       const response = await accountAPI.getAll(page, 20, 'createdAt,desc');
       if (response.data.success) {
@@ -47,11 +47,11 @@ const AccountList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
 
   useEffect(() => {
     fetchAccounts();
-  }, [page]);
+  }, [fetchAccounts]);
 
   const handleOpenDialog = (account?: Account) => {
     if (account) {
@@ -318,16 +318,12 @@ const AccountList: React.FC = () => {
                 ))}
               </Table.Body>
             </Table>
-           </Table.Container>
+          </Table.Container>
 
-           {/* Pagination */}
-           <Pagination
-             currentPage={page}
-             totalPages={totalPages}
-             onPageChange={setPage}
-           />
-         </>
-       )}
+          {/* Pagination */}
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
+      )}
 
       {/* Add/Edit Account Modal */}
       <Modal
@@ -410,7 +406,7 @@ const AccountList: React.FC = () => {
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={!formData.name || submitting}>
-              {submitting ? 'Saving...' : (selectedAccount ? 'Update' : 'Create')}
+              {submitting ? 'Saving...' : selectedAccount ? 'Update' : 'Create'}
             </Button>
           </div>
         </div>
@@ -429,7 +425,11 @@ const AccountList: React.FC = () => {
             the account as inactive.
           </p>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
+            <Button
+              variant="secondary"
+              onClick={() => setOpenDeleteDialog(false)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
             <Button variant="danger" onClick={handleDeleteConfirm} loading={deleting}>

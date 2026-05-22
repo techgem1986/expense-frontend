@@ -30,6 +30,7 @@ const RecurringTransactionList: React.FC = () => {
     fetchCategories();
     fetchAccounts();
     fetchRecurringTransactions();
+    // eslint-disable-next-line
   }, [page]);
 
   const fetchCategories = async () => {
