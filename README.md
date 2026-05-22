@@ -1,4 +1,4 @@
-# ExpenseHub - Expense Management System
+# LedgerFlow - Expense Management System
 
 A premium enterprise admin dashboard for managing expenses, built with React and Tailwind CSS.
 
