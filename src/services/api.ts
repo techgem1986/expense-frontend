@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { TransactionRequest, RecurringTransactionRequest, BudgetRequest } from '../types';
 
 // API base URL from environment variable
 const API_BASE_URL =
@@ -10,9 +11,11 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send cookies (httpOnly JWT cookie) with requests
 });
 
-// Request interceptor to add JWT token
+// Request interceptor to add JWT token from localStorage as fallback
+// for backward compatibility during migration to cookie-based auth
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -29,11 +32,15 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Only redirect if not already on login page and not a refresh attempt
+      const isRefreshRequest = error.config?.url?.includes('/auth/refresh');
+      if (!isRefreshRequest) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   },
@@ -44,6 +51,8 @@ export const authAPI = {
   register: (data: { email: string; password: string; firstName: string; lastName: string }) =>
     api.post('/auth/register', data),
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
+  refresh: () => api.post('/auth/refresh'),
+  logout: () => api.post('/auth/logout'),
 };
 
 // User endpoints
@@ -81,7 +90,7 @@ export const categoryAPI = {
 
 // Transaction endpoints
 export const transactionAPI = {
-  create: (data: any) => api.post('/transactions', data),
+  create: (data: TransactionRequest) => api.post('/transactions', data),
   getAll: (
     page = 0,
     size = 20,
@@ -104,13 +113,14 @@ export const transactionAPI = {
     return api.get(`/transactions?${params.toString()}`);
   },
   getById: (transactionId: number) => api.get(`/transactions/${transactionId}`),
-  update: (transactionId: number, data: any) => api.put(`/transactions/${transactionId}`, data),
+  update: (transactionId: number, data: TransactionRequest) =>
+    api.put(`/transactions/${transactionId}`, data),
   delete: (transactionId: number) => api.delete(`/transactions/${transactionId}`),
 };
 
 // Recurring Transaction endpoints
 export const recurringTransactionAPI = {
-  create: (data: any) => api.post('/recurring-transactions', data),
+  create: (data: RecurringTransactionRequest) => api.post('/recurring-transactions', data),
   getAll: (page = 0, size = 20, sort = 'createdAt,desc') => {
     const params = new URLSearchParams();
     params.append('page', String(page));
@@ -126,18 +136,18 @@ export const recurringTransactionAPI = {
     return api.get(`/recurring-transactions/paginated?${params.toString()}`);
   },
   getById: (recurringId: number) => api.get(`/recurring-transactions/${recurringId}`),
-  update: (recurringId: number, data: any) =>
+  update: (recurringId: number, data: RecurringTransactionRequest) =>
     api.put(`/recurring-transactions/${recurringId}`, data),
   delete: (recurringId: number) => api.delete(`/recurring-transactions/${recurringId}`),
 };
 
 // Budget endpoints
 export const budgetAPI = {
-  create: (data: any) => api.post('/budgets', data),
+  create: (data: BudgetRequest) => api.post('/budgets', data),
   getAll: (page = 0, size = 20, sort = 'createdAt,desc') =>
     api.get(`/budgets?page=${page}&size=${size}&sort=${sort}`),
   getById: (budgetId: number) => api.get(`/budgets/${budgetId}`),
-  update: (budgetId: number, data: any) => api.put(`/budgets/${budgetId}`, data),
+  update: (budgetId: number, data: BudgetRequest) => api.put(`/budgets/${budgetId}`, data),
   delete: (budgetId: number) => api.delete(`/budgets/${budgetId}`),
   checkThreshold: (categoryId: number) => api.get(`/budgets/check-threshold/${categoryId}`),
 };
@@ -227,5 +237,11 @@ export const accountAPI = {
   delete: (accountId: number) => api.delete(`/accounts/${accountId}`),
   getTotalBalance: () => api.get('/accounts/total-balance'),
 };
+
+/**
+ * Check if the backend is reachable.
+ * Used for displaying a connectivity indicator on the frontend.
+ */
+export const checkBackendHealth = () => api.get('/actuator/health');
 
 export default api;

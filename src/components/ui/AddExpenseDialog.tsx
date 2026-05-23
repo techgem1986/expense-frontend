@@ -1,36 +1,98 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { addExpense, CATEGORIES } from '../../lib/expense-store';
+import { transactionAPI, categoryAPI } from '../../services/api';
+import { Category } from '../../types';
+import { getErrorMessage } from '../../services/errorUtils';
 
 interface AddExpenseDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose }) => {
-  const [type, setType] = useState<'expense' | 'income'>('expense');
+const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, onSuccess }) => {
+  const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Food');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await categoryAPI.getAll();
+      const responseBody = response.data;
+      let data: Category[] = [];
+      if (Array.isArray(responseBody)) {
+        data = responseBody;
+      } else if (responseBody?.data?.content && Array.isArray(responseBody.data.content)) {
+        data = responseBody.data.content;
+      } else if (Array.isArray(responseBody?.data)) {
+        data = responseBody.data;
+      }
+      setCategories(data);
+      // Set default category for EXPENSE type
+      const expenseCats = data.filter((c) => c.type === 'EXPENSE');
+      if (expenseCats.length > 0) {
+        setCategoryId(expenseCats[0].id);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch categories:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCategories();
+      setTitle('');
+      setAmount('');
+      setType('EXPENSE');
+      setError(null);
+      setSubmitting(false);
+    }
+  }, [isOpen, fetchCategories]);
+
+  useEffect(() => {
+    // Update categoryId when type changes
+    const filtered = categories.filter((c) => c.type === type);
+    if (filtered.length > 0 && !filtered.find((c) => c.id === categoryId)) {
+      setCategoryId(filtered[0].id);
+    }
+  }, [type, categories, categoryId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !amount) return;
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount)) return;
-    const finalAmount = type === 'expense' ? -Math.abs(numAmount) : Math.abs(numAmount);
-    addExpense({
-      title,
-      amount: finalAmount,
-      category: type === 'income' ? 'Income' : category,
-    });
-    setTitle('');
-    setAmount('');
-    setCategory('Food');
-    setType('expense');
-    onClose();
+    if (numAmount <= 0) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await transactionAPI.create({
+        amount: numAmount,
+        type: type,
+        description: title,
+        transactionDate: new Date().toISOString().split('T')[0],
+        categoryId: type === 'EXPENSE' ? categoryId : undefined,
+      });
+      setTitle('');
+      setAmount('');
+      setType('EXPENSE');
+      setError(null);
+      onClose();
+      onSuccess?.();
+    } catch (err: any) {
+      setError(getErrorMessage(err, 'Failed to create transaction'));
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const filteredCategories = categories.filter((c) => c.type === type);
 
   return (
     <AnimatePresence>
@@ -68,14 +130,20 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose }) 
               Log <span className="text-neon-cyan font-bold">Transaction</span>
             </h2>
 
+            {error && (
+              <div className="mb-4 bg-neon-pink/10 border border-neon-pink/20 text-neon-pink px-3 py-2 rounded-xl text-xs">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Type Toggle */}
               <div className="flex p-1 bg-white/5 rounded-full">
                 <button
                   type="button"
-                  onClick={() => setType('expense')}
+                  onClick={() => setType('EXPENSE')}
                   className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all duration-200 ${
-                    type === 'expense'
+                    type === 'EXPENSE'
                       ? 'bg-neon-pink/20 text-neon-pink'
                       : 'text-white/40 hover:text-white/60'
                   }`}
@@ -85,9 +153,9 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose }) 
                 </button>
                 <button
                   type="button"
-                  onClick={() => setType('income')}
+                  onClick={() => setType('INCOME')}
                   className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all duration-200 ${
-                    type === 'income'
+                    type === 'INCOME'
                       ? 'bg-neon-cyan/20 text-neon-cyan'
                       : 'text-white/40 hover:text-white/60'
                   }`}
@@ -123,18 +191,20 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose }) 
                 />
               </div>
 
-              {/* Category (only for expenses) */}
-              {type === 'expense' && (
+              {/* Category */}
+              {type === 'EXPENSE' && filteredCategories.length > 0 && (
                 <div>
                   <label className="input-label">Category</label>
                   <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    value={categoryId || ''}
+                    onChange={(e) =>
+                      setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
+                    }
                     className="input"
                   >
-                    {CATEGORIES.filter((c) => c !== 'Income').map((cat) => (
-                      <option key={cat} value={cat} className="bg-surface text-white">
-                        {cat}
+                    {filteredCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-surface text-white">
+                        {cat.name}
                       </option>
                     ))}
                   </select>
@@ -144,9 +214,10 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose }) 
               {/* Submit */}
               <button
                 type="submit"
-                className="w-full py-3 rounded-full bg-white text-black font-bold uppercase tracking-widest text-sm hover:bg-neon-cyan transition-all duration-200"
+                disabled={submitting || !title || !amount}
+                className="w-full py-3 rounded-full bg-white text-black font-bold uppercase tracking-widest text-sm hover:bg-neon-cyan transition-all duration-200 disabled:opacity-50"
               >
-                COMMIT ENTRY
+                {submitting ? 'SAVING...' : 'COMMIT ENTRY'}
               </button>
             </form>
           </motion.div>

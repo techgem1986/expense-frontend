@@ -21,7 +21,18 @@ const Categories: React.FC = () => {
     setLoading(true);
     try {
       const response = await categoryAPI.getAll();
-      const data = Array.isArray(response.data) ? response.data : response.data?.data || [];
+      const responseBody = response.data;
+      // Handle paginated response: { success, message, data: { content: [...], totalElements, ... } }
+      // Handle non-paginated response: { success, message, data: [...] }
+      // Handle direct array: [...]
+      let data: Category[] = [];
+      if (Array.isArray(responseBody)) {
+        data = responseBody;
+      } else if (responseBody?.data?.content && Array.isArray(responseBody.data.content)) {
+        data = responseBody.data.content;
+      } else if (Array.isArray(responseBody?.data)) {
+        data = responseBody.data;
+      }
       setCategories(data);
       setError(null);
     } catch (err: any) {

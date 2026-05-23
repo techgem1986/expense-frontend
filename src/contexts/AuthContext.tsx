@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from 'react';
 import { User, AuthResponse } from '../types';
 import { authAPI, userAPI } from '../services/api';
 
@@ -10,6 +17,7 @@ interface AuthContextType {
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  isBackendReachable: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,15 +38,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBackendReachable, setIsBackendReachable] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
+      // Try cookie-based auth first (via refresh endpoint)
+      try {
+        const refreshResponse = await authAPI.refresh();
+        const responseBody = refreshResponse.data;
+        const authData: AuthResponse | undefined = responseBody?.data || responseBody;
+        if (authData?.token) {
+          setToken(authData.token);
+          if (authData.user) {
+            setUser(authData.user);
+            localStorage.setItem('user', JSON.stringify(authData.user));
+          }
+          localStorage.setItem('token', authData.token);
+          setIsLoading(false);
+          setIsBackendReachable(true);
+          return;
+        }
+      } catch {
+        // Cookie-based refresh failed, fall back to localStorage
+        setIsBackendReachable(false);
+      }
+
+      // Fallback: restore session from localStorage
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
 
       if (storedToken && storedUser && storedUser !== 'undefined') {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        try {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+          // Try to validate the token by fetching profile
+          const profileResponse = await userAPI.getProfile();
+          setUser(profileResponse.data);
+          setIsBackendReachable(true);
+        } catch {
+          // Token is invalid or expired, clear stored data
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setToken(null);
+          setUser(null);
+        }
       }
       setIsLoading(false);
     };
@@ -66,8 +109,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (authData) {
         setToken(authData.token);
         setUser(authData.user);
+        // Keep localStorage as fallback during cookie migration
         localStorage.setItem('token', authData.token);
-        localStorage.setItem('user', JSON.stringify(authData.user));
+        // Store only user id and email in localStorage (minimal info for session check)
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            id: authData.user.id,
+            email: authData.user.email,
+            firstName: authData.user.firstName,
+            lastName: authData.user.lastName,
+          }),
+        );
+        setIsBackendReachable(true);
       } else {
         throw new Error('Login response did not contain token/user');
       }
@@ -86,20 +140,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(authData.user);
 
       localStorage.setItem('token', authData.token);
-      localStorage.setItem('user', JSON.stringify(authData.user));
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: authData.user.id,
+          email: authData.user.email,
+          firstName: authData.user.firstName,
+          lastName: authData.user.lastName,
+        }),
+      );
+      setIsBackendReachable(true);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(async () => {
+    try {
+      await authAPI.logout();
+    } catch {
+      // Ignore logout API errors - still clear local state
+    }
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -107,10 +175,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userData: User = response.data;
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
+      setIsBackendReachable(true);
     } catch {
       // Silently ignore refresh errors
     }
-  };
+  }, [token]);
 
   const value: AuthContextType = {
     user,
@@ -120,6 +189,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     refreshUser,
+    isBackendReachable,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
