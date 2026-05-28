@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { transactionAPI, categoryAPI } from '../../services/api';
+import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
 import { Category } from '../../types';
+import { Account } from '../../types/account';
 import { getErrorMessage } from '../../services/errorUtils';
 
 interface AddExpenseDialogProps {
@@ -17,6 +18,9 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
   const [amount, setAmount] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [fromAccountId, setFromAccountId] = useState<number | undefined>(undefined);
+  const [toAccountId, setToAccountId] = useState<number | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,16 +47,51 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
     }
   }, []);
 
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const response = await accountAPI.getAll();
+      if (response.data && response.data.data) {
+        const data = response.data.data.content || response.data.data || [];
+        const activeAccounts = (Array.isArray(data) ? data : []).filter(
+          (acc: Account) => acc.isActive,
+        );
+        setAccounts(activeAccounts);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch accounts:', err);
+      setAccounts([]);
+    }
+  }, []);
+
+  // Find Money Transfer category ID
+  const moneyTransferCategoryId = useMemo(() => {
+    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
+    return mtCategory?.id;
+  }, [categories]);
+
+  // Check if Money Transfer category is selected
+  const isMoneyTransferCategory = useMemo(() => {
+    if (categoryId === undefined || moneyTransferCategoryId === undefined) return false;
+    return categoryId === moneyTransferCategoryId;
+  }, [categoryId, moneyTransferCategoryId]);
+
+  // Determine which account fields to show
+  const showFromAccount = type === 'EXPENSE' || isMoneyTransferCategory;
+  const showToAccount = type === 'INCOME' || isMoneyTransferCategory;
+
   useEffect(() => {
     if (isOpen) {
       fetchCategories();
+      fetchAccounts();
       setTitle('');
       setAmount('');
       setType('EXPENSE');
+      setFromAccountId(undefined);
+      setToAccountId(undefined);
       setError(null);
       setSubmitting(false);
     }
-  }, [isOpen, fetchCategories]);
+  }, [isOpen, fetchCategories, fetchAccounts]);
 
   useEffect(() => {
     // Update categoryId when type changes
@@ -62,12 +101,45 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
     }
   }, [type, categories, categoryId]);
 
+  // Clear account IDs when they should no longer be shown
+  useEffect(() => {
+    if (!showFromAccount) {
+      setFromAccountId(undefined);
+    }
+    if (!showToAccount) {
+      setToAccountId(undefined);
+    }
+  }, [showFromAccount, showToAccount]);
+
+  // Check if from and to accounts are the same
+  const accountError = useMemo(() => {
+    if (fromAccountId && toAccountId && fromAccountId === toAccountId) {
+      return 'From Account and To Account cannot be the same';
+    }
+    return null;
+  }, [fromAccountId, toAccountId]);
+
+  // Check if the form is valid
+  const isFormValid = useMemo(() => {
+    if (!title || !amount) return false;
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return false;
+    if (accountError) return false;
+
+    // From Account required for Expense or Self Transfer
+    if (showFromAccount && !fromAccountId) return false;
+
+    // To Account required for Income or Self Transfer
+    if (showToAccount && !toAccountId) return false;
+
+    return true;
+  }, [title, amount, accountError, showFromAccount, fromAccountId, showToAccount, toAccountId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !amount) return;
+    if (!isFormValid) return;
+
     const numAmount = parseFloat(amount);
-    if (isNaN(numAmount)) return;
-    if (numAmount <= 0) return;
 
     setSubmitting(true);
     setError(null);
@@ -77,11 +149,15 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
         type: type,
         description: title,
         transactionDate: new Date().toISOString().split('T')[0],
-        categoryId: type === 'EXPENSE' ? categoryId : undefined,
+        categoryId: categoryId,
+        fromAccountId: showFromAccount ? fromAccountId : undefined,
+        toAccountId: showToAccount ? toAccountId : undefined,
       });
       setTitle('');
       setAmount('');
       setType('EXPENSE');
+      setFromAccountId(undefined);
+      setToAccountId(undefined);
       setError(null);
       onClose();
       onSuccess?.();
@@ -211,10 +287,75 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
                 </div>
               )}
 
+              {/* From Account - shown for EXPENSE or Self Transfer */}
+              {showFromAccount && (
+                <div>
+                  <label className="input-label">
+                    From Account <span className="text-neon-pink">*</span>
+                  </label>
+                  <select
+                    value={fromAccountId || ''}
+                    onChange={(e) =>
+                      setFromAccountId(e.target.value ? parseInt(e.target.value) : undefined)
+                    }
+                    className={`input ${!fromAccountId && error ? 'border-neon-pink/50' : ''}`}
+                  >
+                    <option value="" className="bg-surface text-white">
+                      Select Account
+                    </option>
+                    {accounts
+                      .filter((account) => account.id !== toAccountId)
+                      .map((account) => (
+                        <option
+                          key={account.id}
+                          value={account.id}
+                          className="bg-surface text-white"
+                        >
+                          {account.name} ({account.accountType})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* To Account - shown for INCOME or Self Transfer */}
+              {showToAccount && (
+                <div>
+                  <label className="input-label">
+                    To Account <span className="text-neon-pink">*</span>
+                  </label>
+                  <select
+                    value={toAccountId || ''}
+                    onChange={(e) =>
+                      setToAccountId(e.target.value ? parseInt(e.target.value) : undefined)
+                    }
+                    className={`input ${!toAccountId && error ? 'border-neon-pink/50' : ''}`}
+                  >
+                    <option value="" className="bg-surface text-white">
+                      Select Account
+                    </option>
+                    {accounts
+                      .filter((account) => account.id !== fromAccountId)
+                      .map((account) => (
+                        <option
+                          key={account.id}
+                          value={account.id}
+                          className="bg-surface text-white"
+                        >
+                          {account.name} ({account.accountType})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Account Error (same account selected) */}
+              {accountError && <div className="text-neon-pink text-xs">{accountError}</div>}
+
               {/* Submit */}
               <button
                 type="submit"
-                disabled={submitting || !title || !amount}
+                disabled={!isFormValid || submitting}
                 className="w-full py-3 rounded-full bg-white text-black font-bold uppercase tracking-widest text-sm hover:bg-neon-cyan transition-all duration-200 disabled:opacity-50"
               >
                 {submitting ? 'SAVING...' : 'COMMIT ENTRY'}

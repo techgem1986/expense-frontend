@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Edit2, Trash2, Repeat, Calendar } from 'lucide-react';
 import Header from '../components/ui/Header';
-import { recurringTransactionAPI, categoryAPI } from '../services/api';
+import { recurringTransactionAPI, categoryAPI, accountAPI } from '../services/api';
 import { RecurringTransactionResponse, RecurringTransactionRequest, Category } from '../types';
+import { AccountSummary } from '../types/account';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getErrorMessage } from '../services/errorUtils';
 
@@ -11,6 +12,7 @@ const RecurringTransactions: React.FC = () => {
   const { formatAmount, convertAmount } = useCurrency();
   const [items, setItems] = useState<RecurringTransactionResponse[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<AccountSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -22,6 +24,8 @@ const RecurringTransactions: React.FC = () => {
   const [formFrequency, setFormFrequency] = useState<'MONTHLY' | 'QUARTERLY' | 'YEARLY'>('MONTHLY');
   const [formDayOfMonth, setFormDayOfMonth] = useState(1);
   const [formDescription, setFormDescription] = useState('');
+  const [formFromAccountId, setFormFromAccountId] = useState<number | undefined>(undefined);
+  const [formToAccountId, setFormToAccountId] = useState<number | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchItems = useCallback(async () => {
@@ -56,10 +60,72 @@ const RecurringTransactions: React.FC = () => {
     }
   }, []);
 
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const response = await accountAPI.getAll();
+      if (response.data && response.data.data) {
+        const data = response.data.data.content || response.data.data || [];
+        setAccounts(Array.isArray(data) ? data : []);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch accounts:', err);
+      setAccounts([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchItems();
     fetchCategories();
-  }, [fetchItems, fetchCategories]);
+    fetchAccounts();
+  }, [fetchItems, fetchCategories, fetchAccounts]);
+
+  // Find Money Transfer category ID from the categories list
+  const moneyTransferCategoryId = useMemo(() => {
+    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
+    return mtCategory?.id;
+  }, [categories]);
+
+  // Check if Money Transfer category is selected
+  const isMoneyTransferCategory = useMemo(() => {
+    if (formCategoryId === undefined || moneyTransferCategoryId === undefined) return false;
+    return formCategoryId === moneyTransferCategoryId;
+  }, [formCategoryId, moneyTransferCategoryId]);
+
+  // Determine which account fields to show
+  const showFromAccount = formType === 'EXPENSE' || isMoneyTransferCategory;
+  const showToAccount = formType === 'INCOME' || isMoneyTransferCategory;
+
+  // Same account validation
+  const accountError = useMemo(() => {
+    if (formFromAccountId && formToAccountId && formFromAccountId === formToAccountId) {
+      return 'From Account and To Account cannot be the same';
+    }
+    return null;
+  }, [formFromAccountId, formToAccountId]);
+
+  // Form validity check
+  const isFormValid = useMemo(() => {
+    if (!formName.trim() || !formAmount) return false;
+    const numAmount = parseFloat(formAmount);
+    if (isNaN(numAmount) || numAmount <= 0) return false;
+    if (accountError) return false;
+
+    // From Account required for Expense or Self Transfer
+    if (showFromAccount && !formFromAccountId) return false;
+
+    // To Account required for Income or Self Transfer
+    if (showToAccount && !formToAccountId) return false;
+
+    return true;
+  }, [
+    formName,
+    formAmount,
+    accountError,
+    showFromAccount,
+    formFromAccountId,
+    showToAccount,
+    formToAccountId,
+  ]);
 
   const handleOpenForm = (item?: RecurringTransactionResponse) => {
     if (item) {
@@ -71,6 +137,8 @@ const RecurringTransactions: React.FC = () => {
       setFormFrequency(item.frequency as 'MONTHLY' | 'QUARTERLY' | 'YEARLY');
       setFormDayOfMonth(item.dayOfMonth);
       setFormDescription(item.description || '');
+      setFormFromAccountId(item.fromAccount?.id);
+      setFormToAccountId(item.toAccount?.id);
     } else {
       setEditing(null);
       setFormName('');
@@ -80,13 +148,15 @@ const RecurringTransactions: React.FC = () => {
       setFormFrequency('MONTHLY');
       setFormDayOfMonth(1);
       setFormDescription('');
+      setFormFromAccountId(undefined);
+      setFormToAccountId(undefined);
     }
     setShowForm(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim() || !formAmount) return;
+    if (!isFormValid) return;
     setSubmitting(true);
     try {
       const data: RecurringTransactionRequest = {
@@ -98,6 +168,8 @@ const RecurringTransactions: React.FC = () => {
         startDate: editing ? editing.startDate : new Date().toISOString().split('T')[0],
         description: formDescription || undefined,
         categoryId: formCategoryId || undefined,
+        fromAccountId: formFromAccountId,
+        toAccountId: formToAccountId,
       };
       if (editing) {
         await recurringTransactionAPI.update(editing.id, data);
@@ -258,6 +330,34 @@ const RecurringTransactions: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* From Account - shown for EXPENSE or Self Transfer */}
+              {showFromAccount && (
+                <div>
+                  <label className="input-label">
+                    From Account <span className="text-neon-pink">*</span>
+                  </label>
+                  <select
+                    value={formFromAccountId || ''}
+                    onChange={(e) =>
+                      setFormFromAccountId(e.target.value ? parseInt(e.target.value) : undefined)
+                    }
+                    className="input"
+                  >
+                    <option value="" className="bg-surface">
+                      Select Account
+                    </option>
+                    {accounts
+                      .filter((acc) => acc.id !== formToAccountId)
+                      .map((acc) => (
+                        <option key={acc.id} value={acc.id} className="bg-surface">
+                          {acc.name} ({acc.accountType})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="input-label">Category</label>
                 <select
@@ -277,6 +377,37 @@ const RecurringTransactions: React.FC = () => {
                   ))}
                 </select>
               </div>
+
+              {/* To Account - shown for INCOME or Self Transfer */}
+              {showToAccount && (
+                <div>
+                  <label className="input-label">
+                    To Account <span className="text-neon-pink">*</span>
+                  </label>
+                  <select
+                    value={formToAccountId || ''}
+                    onChange={(e) =>
+                      setFormToAccountId(e.target.value ? parseInt(e.target.value) : undefined)
+                    }
+                    className="input"
+                  >
+                    <option value="" className="bg-surface">
+                      Select Account
+                    </option>
+                    {accounts
+                      .filter((acc) => acc.id !== formFromAccountId)
+                      .map((acc) => (
+                        <option key={acc.id} value={acc.id} className="bg-surface">
+                          {acc.name} ({acc.accountType})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Account Error */}
+              {accountError && <p className="text-neon-pink text-xs">{accountError}</p>}
+
               <div>
                 <label className="input-label">Description (optional)</label>
                 <input
@@ -300,7 +431,7 @@ const RecurringTransactions: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || !formName.trim() || !formAmount}
+                  disabled={submitting || !isFormValid}
                   className="flex-1 py-3 rounded-xl bg-neon-cyan text-black font-bold text-sm disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : editing ? 'Update' : 'Create'}

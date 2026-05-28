@@ -16,34 +16,6 @@ type TransactionFormData = {
   toAccountId?: number | null;
 };
 
-const validationSchema = yup.object().shape({
-  amount: yup
-    .number()
-    .typeError('Amount must be a number')
-    .positive('Amount must be positive')
-    .required('Amount is required'),
-  type: yup.string().required('Type is required').oneOf(['INCOME', 'EXPENSE']),
-  description: yup.string(),
-  transactionDate: yup.string().required('Date is required'),
-  categoryId: yup.number().optional().nullable(),
-  fromAccountId: yup.number().when('type', {
-    is: 'EXPENSE',
-    then: (schema) =>
-      schema
-        .positive('Please select a valid account')
-        .required('From Account is required for expenses'),
-    otherwise: (schema) => schema.optional().nullable(),
-  }),
-  toAccountId: yup.number().when('type', {
-    is: 'INCOME',
-    then: (schema) =>
-      schema
-        .positive('Please select a valid account')
-        .required('To Account is required for income'),
-    otherwise: (schema) => schema.optional().nullable(),
-  }),
-}) as any;
-
 interface TransactionFormProps {
   open: boolean;
   onClose: () => void;
@@ -64,6 +36,63 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
   const [showToAccount, setShowToAccount] = useState(false);
   const [accountError, setAccountError] = useState('');
+
+  // Find Money Transfer category ID from the categories list
+  const moneyTransferCategoryId = useMemo(() => {
+    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
+    return mtCategory?.id;
+  }, [categories]);
+
+  // Build validation schema dynamically so it can reference moneyTransferCategoryId.
+  // Rules:
+  //   • Income        → To Account is mandatory
+  //   • Expense       → From Account is mandatory
+  //   • Self Transfer → Both From Account and To Account are mandatory
+  const validationSchema = useMemo(
+    () =>
+      yup.object().shape({
+        amount: yup
+          .number()
+          .typeError('Amount must be a number')
+          .positive('Amount must be positive')
+          .required('Amount is required'),
+        type: yup.string().required('Type is required').oneOf(['INCOME', 'EXPENSE']),
+        description: yup.string(),
+        transactionDate: yup.string().required('Date is required'),
+        categoryId: yup.number().optional().nullable(),
+        fromAccountId: yup
+          .number()
+          .test('from-account-required', 'From Account is required', function (value) {
+            const { type, categoryId } = this.parent;
+            const isExpense = type === 'EXPENSE';
+            const isTransfer =
+              moneyTransferCategoryId !== undefined &&
+              categoryId != null &&
+              categoryId !== '' &&
+              Number(categoryId) === moneyTransferCategoryId;
+            if (isExpense || isTransfer) {
+              return value != null && Number(value) > 0;
+            }
+            return true;
+          }),
+        toAccountId: yup
+          .number()
+          .test('to-account-required', 'To Account is required', function (value) {
+            const { type, categoryId } = this.parent;
+            const isIncome = type === 'INCOME';
+            const isTransfer =
+              moneyTransferCategoryId !== undefined &&
+              categoryId != null &&
+              categoryId !== '' &&
+              Number(categoryId) === moneyTransferCategoryId;
+            if (isIncome || isTransfer) {
+              return value != null && Number(value) > 0;
+            }
+            return true;
+          }),
+      }) as any,
+    [moneyTransferCategoryId],
+  );
 
   const {
     register,
@@ -90,12 +119,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   const selectedCategoryIdRaw = watch('categoryId') as string | number | null | undefined;
   const fromAccountId = watch('fromAccountId');
   const toAccountId = watch('toAccountId');
-
-  // Find Money Transfer category ID from the categories list
-  const moneyTransferCategoryId = useMemo(() => {
-    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
-    return mtCategory?.id;
-  }, [categories]);
 
   // Check if Money Transfer category is selected
   const isMoneyTransferCategory = useMemo(() => {
@@ -163,14 +186,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
 
-    // Validate self-transfer (Money Transfer category): both accounts required
+    // Additional validation for self-transfer (Money Transfer category)
+    // Safety net — yup schema should already enforce this
     if (isMoneyTransferCategory) {
       if (!data.fromAccountId) {
-        setError('fromAccountId', { message: 'From Account is required for transfers' });
+        setError('fromAccountId', { message: 'From Account is required for self transfer' });
         return;
       }
       if (!data.toAccountId) {
-        setError('toAccountId', { message: 'To Account is required for transfers' });
+        setError('toAccountId', { message: 'To Account is required for self transfer' });
         return;
       }
     }
@@ -209,10 +233,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     return accounts.filter((acc) => acc.isActive);
   }, [accounts]);
 
-  const isFormValid =
-    !accountError &&
-    !(showToAccount && !toAccountId) &&
-    !(selectedType === 'EXPENSE' && !fromAccountId);
+  // Check if the form is valid for enabling the submit button
+  const isFormValid = useMemo(() => {
+    if (accountError) return false;
+
+    const isExpense = selectedType === 'EXPENSE';
+    const isIncome = selectedType === 'INCOME';
+    const isTransfer = isMoneyTransferCategory;
+
+    // From Account required for Expense or Self Transfer
+    if ((isExpense || isTransfer) && !fromAccountId) return false;
+
+    // To Account required for Income or Self Transfer
+    if ((isIncome || isTransfer) && !toAccountId) return false;
+
+    return true;
+  }, [accountError, selectedType, isMoneyTransferCategory, fromAccountId, toAccountId]);
 
   return (
     <div className="space-y-4">
