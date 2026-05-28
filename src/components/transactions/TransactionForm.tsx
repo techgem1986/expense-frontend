@@ -19,14 +19,29 @@ type TransactionFormData = {
 const validationSchema = yup.object().shape({
   amount: yup
     .number()
+    .typeError('Amount must be a number')
     .positive('Amount must be positive')
     .required('Amount is required'),
   type: yup.string().required('Type is required').oneOf(['INCOME', 'EXPENSE']),
   description: yup.string(),
   transactionDate: yup.string().required('Date is required'),
   categoryId: yup.number().optional().nullable(),
-  fromAccountId: yup.number().positive('Please select a valid account').optional().nullable(),
-  toAccountId: yup.number().positive('Please select a valid account').optional().nullable(),
+  fromAccountId: yup.number().when('type', {
+    is: 'EXPENSE',
+    then: (schema) =>
+      schema
+        .positive('Please select a valid account')
+        .required('From Account is required for expenses'),
+    otherwise: (schema) => schema.optional().nullable(),
+  }),
+  toAccountId: yup.number().when('type', {
+    is: 'INCOME',
+    then: (schema) =>
+      schema
+        .positive('Please select a valid account')
+        .required('To Account is required for income'),
+    otherwise: (schema) => schema.optional().nullable(),
+  }),
 }) as any;
 
 interface TransactionFormProps {
@@ -57,6 +72,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     setValue,
     reset,
     watch,
+    setError,
   } = useForm<TransactionFormData>({
     resolver: yupResolver(validationSchema),
     defaultValues: {
@@ -77,13 +93,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   // Find Money Transfer category ID from the categories list
   const moneyTransferCategoryId = useMemo(() => {
-    const mtCategory = categories.find(cat => cat.name.toLowerCase() === 'money transfer');
+    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
     return mtCategory?.id;
   }, [categories]);
 
   // Check if Money Transfer category is selected
   const isMoneyTransferCategory = useMemo(() => {
-    if (selectedCategoryIdRaw === undefined || selectedCategoryIdRaw === null || selectedCategoryIdRaw === '') return false;
+    if (
+      selectedCategoryIdRaw === undefined ||
+      selectedCategoryIdRaw === null ||
+      selectedCategoryIdRaw === ''
+    )
+      return false;
     const categoryIdNum = Number(selectedCategoryIdRaw);
     return moneyTransferCategoryId !== undefined && categoryIdNum === moneyTransferCategoryId;
   }, [selectedCategoryIdRaw, moneyTransferCategoryId]);
@@ -142,6 +163,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
 
+    // Validate self-transfer (Money Transfer category): both accounts required
+    if (isMoneyTransferCategory) {
+      if (!data.fromAccountId) {
+        setError('fromAccountId', { message: 'From Account is required for transfers' });
+        return;
+      }
+      if (!data.toAccountId) {
+        setError('toAccountId', { message: 'To Account is required for transfers' });
+        return;
+      }
+    }
+
     const backendType = data.type as 'INCOME' | 'EXPENSE';
 
     // Convert categoryId to number
@@ -157,18 +190,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       transactionDate: data.transactionDate,
       categoryId: categoryIdNum,
       fromAccountId: data.fromAccountId || undefined,
-      toAccountId: showToAccount ? (data.toAccountId || undefined) : undefined,
+      toAccountId: showToAccount ? data.toAccountId || undefined : undefined,
     };
-    
+
     onSubmit(request);
   };
 
   // Filter categories based on type
   const filteredCategories = useMemo(() => {
     if (selectedType === 'INCOME') {
-      return categories.filter(cat => cat.type === 'INCOME');
+      return categories.filter((cat) => cat.type === 'INCOME');
     } else {
-      return categories.filter(cat => cat.type === 'EXPENSE');
+      return categories.filter((cat) => cat.type === 'EXPENSE');
     }
   }, [categories, selectedType]);
 
@@ -176,8 +209,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     return accounts.filter((acc) => acc.isActive);
   }, [accounts]);
 
-  const isFormValid = !accountError && 
-    !(showToAccount && !toAccountId) && 
+  const isFormValid =
+    !accountError &&
+    !(showToAccount && !toAccountId) &&
     !(selectedType === 'EXPENSE' && !fromAccountId);
 
   return (
@@ -212,7 +246,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* From Account - shown for EXPENSE transactions */}
       {selectedType === 'EXPENSE' && (
         <div>
-          <label htmlFor="fromAccountId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label
+            htmlFor="fromAccountId"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
             From Account *
           </label>
           <select
@@ -239,7 +276,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
       {/* Category Selection */}
       <div>
-        <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label
+          htmlFor="categoryId"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
           Category
         </label>
         <select
@@ -259,7 +299,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* To Account - shown for INCOME transactions or when Money Transfer is selected */}
       {showToAccount && (
         <div>
-          <label htmlFor="toAccountId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label
+            htmlFor="toAccountId"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
             To Account *
           </label>
           <select
@@ -283,14 +326,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           {errors.toAccountId && (
             <p className="mt-1 text-xs text-danger-500">{errors.toAccountId.message}</p>
           )}
-          {accountError && (
-            <p className="mt-1 text-xs text-danger-500">{accountError}</p>
-          )}
+          {accountError && <p className="mt-1 text-xs text-danger-500">{accountError}</p>}
         </div>
       )}
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label
+          htmlFor="description"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
           Description
         </label>
         <textarea
@@ -309,10 +353,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit(handleFormSubmit)} 
-          disabled={!isFormValid}
-        >
+        <Button onClick={handleSubmit(handleFormSubmit)} disabled={!isFormValid}>
           {transaction ? 'Update' : 'Create'}
         </Button>
       </div>

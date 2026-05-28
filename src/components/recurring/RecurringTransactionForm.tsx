@@ -3,7 +3,12 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Button, Input, Select } from '../ui';
-import { RecurringTransactionRequest, RecurringTransactionResponse, Category, Frequency } from '../../types';
+import {
+  RecurringTransactionRequest,
+  RecurringTransactionResponse,
+  Category,
+  Frequency,
+} from '../../types';
 import { AccountSummary } from '../../types/account';
 
 type RecurringFormData = {
@@ -24,6 +29,7 @@ const validationSchema = yup.object().shape({
   name: yup.string().required('Name is required'),
   amount: yup
     .number()
+    .typeError('Amount must be a number')
     .positive('Amount must be positive')
     .required('Amount is required'),
   type: yup.string().required('Type is required').oneOf(['INCOME', 'EXPENSE']),
@@ -38,8 +44,22 @@ const validationSchema = yup.object().shape({
   startDate: yup.string().required('Start date is required'),
   endDate: yup.string(),
   categoryId: yup.number().optional().nullable(),
-  fromAccountId: yup.number().optional().nullable(),
-  toAccountId: yup.number().optional().nullable(),
+  fromAccountId: yup.number().when('type', {
+    is: 'EXPENSE',
+    then: (schema) =>
+      schema
+        .positive('Please select a valid account')
+        .required('From Account is required for expenses'),
+    otherwise: (schema) => schema.optional().nullable(),
+  }),
+  toAccountId: yup.number().when('type', {
+    is: 'INCOME',
+    then: (schema) =>
+      schema
+        .positive('Please select a valid account')
+        .required('To Account is required for income'),
+    otherwise: (schema) => schema.optional().nullable(),
+  }),
 }) as any;
 
 interface RecurringTransactionFormProps {
@@ -71,6 +91,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
     setValue,
     reset,
     watch,
+    setError,
   } = useForm<RecurringFormData>({
     resolver: yupResolver(validationSchema),
     defaultValues: {
@@ -95,7 +116,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
 
   // Find Money Transfer category ID from the categories list
   const moneyTransferCategoryId = useMemo(() => {
-    const mtCategory = categories.find(cat => cat.name.toLowerCase() === 'money transfer');
+    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
     return mtCategory?.id;
   }, [categories]);
 
@@ -142,7 +163,10 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
       setValue('startDate', recurring.startDate);
       setValue('endDate', recurring.endDate || '');
       // Set categoryId from the recurring transaction
-      if (moneyTransferCategoryId !== undefined && recurring.category?.name?.toLowerCase() === 'money transfer') {
+      if (
+        moneyTransferCategoryId !== undefined &&
+        recurring.category?.name?.toLowerCase() === 'money transfer'
+      ) {
         setValue('categoryId', moneyTransferCategoryId);
       } else {
         setValue('categoryId', recurring.category?.id || undefined);
@@ -160,6 +184,22 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
   }, [recurring, open, setValue, reset, moneyTransferCategoryId]);
 
   const handleFormSubmit: SubmitHandler<RecurringFormData> = (data) => {
+    if (accountError) {
+      return;
+    }
+
+    // Validate self-transfer (Money Transfer category): both accounts required
+    if (isMoneyTransferCategory) {
+      if (!data.fromAccountId) {
+        setError('fromAccountId', { message: 'From Account is required for transfers' });
+        return;
+      }
+      if (!data.toAccountId) {
+        setError('toAccountId', { message: 'To Account is required for transfers' });
+        return;
+      }
+    }
+
     const backendType = data.type as 'INCOME' | 'EXPENSE';
 
     // Convert categoryId to number
@@ -169,12 +209,14 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
     }
 
     // Convert account IDs to numbers
-    const fromAccountIdNum = data.fromAccountId !== undefined && data.fromAccountId !== null && data.fromAccountId !== ''
-      ? Number(data.fromAccountId)
-      : undefined;
-    const toAccountIdNum = data.toAccountId !== undefined && data.toAccountId !== null && data.toAccountId !== ''
-      ? Number(data.toAccountId)
-      : undefined;
+    const fromAccountIdNum =
+      data.fromAccountId !== undefined && data.fromAccountId !== null && data.fromAccountId !== ''
+        ? Number(data.fromAccountId)
+        : undefined;
+    const toAccountIdNum =
+      data.toAccountId !== undefined && data.toAccountId !== null && data.toAccountId !== ''
+        ? Number(data.toAccountId)
+        : undefined;
 
     const request: RecurringTransactionRequest = {
       name: data.name,
@@ -195,9 +237,9 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
   // Filter categories based on type
   const filteredCategories = useMemo(() => {
     if (selectedType === 'INCOME') {
-      return categories.filter(cat => cat.type === 'INCOME');
+      return categories.filter((cat) => cat.type === 'INCOME');
     } else {
-      return categories.filter(cat => cat.type === 'EXPENSE');
+      return categories.filter((cat) => cat.type === 'EXPENSE');
     }
   }, [categories, selectedType]);
 
@@ -282,11 +324,12 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
           }`}
         >
           <option value="">Select Account</option>
-          {Array.isArray(accounts) && accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name} ({account.accountType})
-            </option>
-          ))}
+          {Array.isArray(accounts) &&
+            accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.accountType})
+              </option>
+            ))}
         </select>
         {errors.fromAccountId && (
           <p className="mt-1 text-xs text-danger-500">{errors.fromAccountId.message}</p>
@@ -326,20 +369,19 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
             }`}
           >
             <option value="">Select Account</option>
-            {Array.isArray(accounts) && accounts
-              .filter((account) => account.id !== fromAccountId)
-              .map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name} ({account.accountType})
-                </option>
-              ))}
+            {Array.isArray(accounts) &&
+              accounts
+                .filter((account) => account.id !== fromAccountId)
+                .map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.accountType})
+                  </option>
+                ))}
           </select>
           {errors.toAccountId && (
             <p className="mt-1 text-xs text-danger-500">{errors.toAccountId.message}</p>
           )}
-          {accountError && (
-            <p className="mt-1 text-xs text-danger-500">{accountError}</p>
-          )}
+          {accountError && <p className="mt-1 text-xs text-danger-500">{accountError}</p>}
         </div>
       )}
 
@@ -363,7 +405,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
           Cancel
         </Button>
         <Button onClick={handleSubmit(handleFormSubmit)} disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : (recurring ? 'Update' : 'Create')}
+          {isSubmitting ? 'Saving...' : recurring ? 'Update' : 'Create'}
         </Button>
       </div>
     </div>
