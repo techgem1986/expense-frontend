@@ -134,22 +134,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authAPI.register({ email, password, firstName, lastName });
-      const authData: AuthResponse = response.data;
+      // Handle both { data: { token, user } } and { token, user } response structures
+      let authData: AuthResponse | undefined;
+      if (response.data && response.data.token && response.data.user) {
+        authData = response.data;
+      } else if (
+        response.data &&
+        response.data.data &&
+        response.data.data.token &&
+        response.data.data.user
+      ) {
+        authData = response.data.data;
+      }
 
-      setToken(authData.token);
-      setUser(authData.user);
+      if (authData) {
+        setToken(authData.token);
+        setUser(authData.user);
 
-      localStorage.setItem('token', authData.token);
-      localStorage.setItem(
-        'user',
-        JSON.stringify({
-          id: authData.user.id,
-          email: authData.user.email,
-          firstName: authData.user.firstName,
-          lastName: authData.user.lastName,
-        }),
-      );
-      setIsBackendReachable(true);
+        localStorage.setItem('token', authData.token);
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            id: authData.user.id,
+            email: authData.user.email,
+            firstName: authData.user.firstName,
+            lastName: authData.user.lastName,
+          }),
+        );
+        setIsBackendReachable(true);
+      } else {
+        throw new Error('Registration response did not contain token/user');
+      }
     } finally {
       setIsLoading(false);
     }

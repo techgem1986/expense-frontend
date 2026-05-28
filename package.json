@@ -36,7 +36,9 @@
     "react-scripts": "5.0.1",
     "recharts": "^3.8.1",
     "web-vitals": "^2.1.4",
-    "yup": "^1.7.1"
+    "yup": "^1.7.1",
+    "@grafana/faro-react": "2.7.0",
+    "@grafana/faro-web-tracing": "2.7.0"
   },
   "scripts": {
     "start": "react-scripts start",
