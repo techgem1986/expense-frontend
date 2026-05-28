@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Wallet, Building2, CreditCard, Landmark } from 'lucide-react';
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Wallet,
+  Building2,
+  CreditCard,
+  Landmark,
+  TrendingUp,
+  PieChart,
+} from 'lucide-react';
 import Header from '../components/ui/Header';
 import { accountAPI } from '../services/api';
 import { Account } from '../types/account';
@@ -9,16 +19,20 @@ import { getErrorMessage } from '../services/errorUtils';
 
 const accountTypeIcons: Record<string, React.ReactNode> = {
   SAVINGS: <Landmark className="w-4 h-4" />,
+  SALARY: <Wallet className="w-4 h-4" />,
+  CURRENT: <Building2 className="w-4 h-4" />,
+  INVESTMENT: <TrendingUp className="w-4 h-4" />,
+  MUTUAL_FUND: <PieChart className="w-4 h-4" />,
   CREDIT_CARD: <CreditCard className="w-4 h-4" />,
-  CHECKING: <Wallet className="w-4 h-4" />,
-  LOAN: <Building2 className="w-4 h-4" />,
 };
 
 const accountTypeBg: Record<string, string> = {
   SAVINGS: 'bg-green-400/10 text-green-400',
+  SALARY: 'bg-neon-cyan/10 text-neon-cyan',
+  CURRENT: 'bg-blue-400/10 text-blue-400',
+  INVESTMENT: 'bg-purple-400/10 text-purple-400',
+  MUTUAL_FUND: 'bg-orange-400/10 text-orange-400',
   CREDIT_CARD: 'bg-neon-pink/10 text-neon-pink',
-  CHECKING: 'bg-neon-cyan/10 text-neon-cyan',
-  LOAN: 'bg-yellow-400/10 text-yellow-400',
 };
 
 const Accounts: React.FC = () => {
@@ -174,7 +188,7 @@ const Accounts: React.FC = () => {
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Main Checking"
+                  placeholder="e.g. Main Salary Account"
                   className="input"
                   autoFocus
                 />
@@ -189,14 +203,20 @@ const Accounts: React.FC = () => {
                   <option value="SAVINGS" className="bg-surface">
                     Savings
                   </option>
-                  <option value="CHECKING" className="bg-surface">
-                    Checking
+                  <option value="SALARY" className="bg-surface">
+                    Salary
+                  </option>
+                  <option value="CURRENT" className="bg-surface">
+                    Current
+                  </option>
+                  <option value="INVESTMENT" className="bg-surface">
+                    Investment
+                  </option>
+                  <option value="MUTUAL_FUND" className="bg-surface">
+                    Mutual Funds
                   </option>
                   <option value="CREDIT_CARD" className="bg-surface">
-                    Credit Card
-                  </option>
-                  <option value="LOAN" className="bg-surface">
-                    Loan
+                    Credit Cards
                   </option>
                 </select>
               </div>

@@ -1,28 +1,24 @@
 /**
  * Account types for the expense management system.
  */
-export type AccountTypeEnum = 
-  | 'SAVINGS' 
-  | 'CHECKING' 
-  | 'LOAN' 
-  | 'INVESTMENT' 
-  | 'MUTUAL_FUND' 
-  | 'CREDIT_CARD' 
-  | 'CASH' 
-  | 'OTHER';
+export type AccountTypeEnum =
+  | 'SAVINGS'
+  | 'SALARY'
+  | 'CURRENT'
+  | 'INVESTMENT'
+  | 'MUTUAL_FUND'
+  | 'CREDIT_CARD';
 
 /**
  * Display names for account types.
  */
 export const AccountTypeDisplayNames: Record<AccountTypeEnum, string> = {
-  SAVINGS: 'Savings Account',
-  CHECKING: 'Checking Account',
-  LOAN: 'Loan',
+  SAVINGS: 'Savings',
+  SALARY: 'Salary',
+  CURRENT: 'Current',
   INVESTMENT: 'Investment',
-  MUTUAL_FUND: 'Mutual Fund',
-  CREDIT_CARD: 'Credit Card',
-  CASH: 'Cash',
-  OTHER: 'Other',
+  MUTUAL_FUND: 'Mutual Funds',
+  CREDIT_CARD: 'Credit Cards',
 };
 
 /**
