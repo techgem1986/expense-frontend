@@ -6,7 +6,7 @@ import { transactionAPI, categoryAPI } from '../services/api';
 import { TransactionResponse, Category } from '../types';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getErrorMessage } from '../services/errorUtils';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 
 const categoryBg: Record<string, string> = {
   Infrastructure: 'bg-neon-cyan/10',
