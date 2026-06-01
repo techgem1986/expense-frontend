@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Trash2, Edit2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Search, Trash2, Edit2, ArrowUpRight, ArrowDownRight, ArrowRightLeft } from 'lucide-react';
 import Header from '../components/ui/Header';
 import AddExpenseDialog from '../components/ui/AddExpenseDialog';
 import { transactionAPI, categoryAPI } from '../services/api';
@@ -204,9 +204,17 @@ const Transactions: React.FC = () => {
                     className="group flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all border-b border-white/5 last:border-b-0"
                   >
                     <div
-                      className={`size-12 rounded-xl ${tx.type === 'INCOME' ? 'bg-neon-cyan/10' : categoryBg[getCategoryName(tx.category)] || 'bg-white/5'} flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0`}
+                      className={`size-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0 ${
+                        tx.type === 'TRANSFER'
+                          ? 'bg-neon-purple/10'
+                          : tx.type === 'INCOME'
+                            ? 'bg-neon-cyan/10'
+                            : categoryBg[getCategoryName(tx.category)] || 'bg-white/5'
+                      }`}
                     >
-                      {tx.type === 'INCOME' ? (
+                      {tx.type === 'TRANSFER' ? (
+                        <ArrowRightLeft className="w-5 h-5 text-neon-purple" />
+                      ) : tx.type === 'INCOME' ? (
                         <ArrowUpRight className="w-5 h-5 text-neon-cyan" />
                       ) : (
                         <ArrowDownRight className="w-5 h-5 text-neon-pink" />
@@ -222,9 +230,15 @@ const Transactions: React.FC = () => {
                       </p>
                     </div>
                     <span
-                      className={`font-display font-bold text-sm ${tx.type === 'INCOME' ? 'text-neon-cyan' : 'text-white/80'}`}
+                      className={`font-display font-bold text-sm ${
+                        tx.type === 'INCOME'
+                          ? 'text-neon-cyan'
+                          : tx.type === 'TRANSFER'
+                            ? 'text-neon-purple'
+                            : 'text-white/80'
+                      }`}
                     >
-                      {tx.type === 'INCOME' ? '+' : '-'}
+                      {tx.type === 'TRANSFER' ? '↔ ' : tx.type === 'INCOME' ? '+' : '-'}
                       {formatAmount(convertAmount(Math.abs(tx.amount)))}
                     </span>
                     <button

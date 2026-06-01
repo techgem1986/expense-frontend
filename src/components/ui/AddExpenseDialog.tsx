@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { TransactionResponse } from '../../types';
-import { Category } from '../../types';
-import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
+import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft } from 'lucide-react';
+import { TransactionResponse, TransactionType } from '../../types';
+import { transactionAPI, accountAPI } from '../../services/api';
 import { Account } from '../../types/account';
 import { getErrorMessage } from '../../services/errorUtils';
 
@@ -20,11 +19,9 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
   onSuccess,
   transaction,
 }) => {
-  const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+  const [type, setType] = useState<TransactionType>('EXPENSE');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [fromAccountId, setFromAccountId] = useState<number | undefined>(undefined);
   const [toAccountId, setToAccountId] = useState<number | undefined>(undefined);
@@ -32,31 +29,6 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [transactionDate, setTransactionDate] = useState<string>('');
   const initializedRef = React.useRef(false);
-
-  const fetchCategories = useCallback(async (skipDefaultCategory = false) => {
-    try {
-      const response = await categoryAPI.getAll();
-      const responseBody = response.data;
-      let data: Category[] = [];
-      if (Array.isArray(responseBody)) {
-        data = responseBody;
-      } else if (responseBody?.data?.content && Array.isArray(responseBody.data.content)) {
-        data = responseBody.data.content;
-      } else if (Array.isArray(responseBody?.data)) {
-        data = responseBody.data;
-      }
-      setCategories(data);
-      // Set default category for EXPENSE type only when creating (not editing)
-      if (!skipDefaultCategory) {
-        const expenseCats = data.filter((c) => c.type === 'EXPENSE');
-        if (expenseCats.length > 0) {
-          setCategoryId(expenseCats[0].id);
-        }
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch categories:', err);
-    }
-  }, []);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -74,21 +46,9 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     }
   }, []);
 
-  // Find Money Transfer category ID
-  const moneyTransferCategoryId = useMemo(() => {
-    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
-    return mtCategory?.id;
-  }, [categories]);
-
-  // Check if Money Transfer category is selected
-  const isMoneyTransferCategory = useMemo(() => {
-    if (categoryId === undefined || moneyTransferCategoryId === undefined) return false;
-    return categoryId === moneyTransferCategoryId;
-  }, [categoryId, moneyTransferCategoryId]);
-
   // Determine which account fields to show
-  const showFromAccount = type === 'EXPENSE' || isMoneyTransferCategory;
-  const showToAccount = type === 'INCOME' || isMoneyTransferCategory;
+  const showFromAccount = type === 'EXPENSE' || type === 'TRANSFER';
+  const showToAccount = type === 'INCOME' || type === 'TRANSFER';
 
   useEffect(() => {
     if (isOpen) {
@@ -96,25 +56,21 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
       const isEdit = !!transaction;
 
       if (isEdit) {
-        // Edit mode: pre-fill from existing transaction, skip default category
+        // Edit mode: pre-fill from existing transaction
         setType(transaction.type);
         setTitle(transaction.description || '');
         setAmount(String(Math.abs(transaction.amount)));
-        setCategoryId(transaction.category?.id);
         setFromAccountId(transaction.fromAccount?.id);
         setToAccountId(transaction.toAccount?.id);
         setTransactionDate(transaction.transactionDate);
-        fetchCategories(true); // pass skipDefaultCategory=true
       } else {
         // Create mode: reset to defaults
         setTitle('');
         setAmount('');
         setType('EXPENSE');
-        setCategoryId(undefined);
         setFromAccountId(undefined);
         setToAccountId(undefined);
         setTransactionDate(new Date().toISOString().split('T')[0]);
-        fetchCategories(false);
       }
 
       fetchAccounts();
@@ -122,23 +78,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
       setSubmitting(false);
       initializedRef.current = true;
     }
-  }, [isOpen, transaction, fetchCategories, fetchAccounts]);
-
-  useEffect(() => {
-    // Only auto-set category when user changes type, not during initial load in edit mode
-    if (!initializedRef.current) return;
-
-    // Update categoryId when type changes to EXPENSE
-    if (type === 'EXPENSE') {
-      const filtered = categories.filter((c) => c.type === 'EXPENSE');
-      if (filtered.length > 0 && !filtered.find((c) => c.id === categoryId)) {
-        setCategoryId(filtered[0].id);
-      }
-    } else {
-      // For INCOME, clear the selection so user must choose from the dropdown
-      setCategoryId(undefined);
-    }
-  }, [type, categories, categoryId]);
+  }, [isOpen, transaction, fetchAccounts]);
 
   // Clear account IDs when they should no longer be shown
   useEffect(() => {
@@ -165,27 +105,13 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     if (isNaN(numAmount) || numAmount <= 0) return false;
     if (accountError) return false;
 
-    // Category required for Income
-    if (type === 'INCOME' && !categoryId) return false;
-
-    // From Account required for Expense or Self Transfer
-    if (showFromAccount && !fromAccountId) return false;
-
-    // To Account required for Income or Self Transfer
-    if (showToAccount && !toAccountId) return false;
+    // Account validation based on type
+    if (type === 'INCOME' && !toAccountId) return false;
+    if (type === 'EXPENSE' && !fromAccountId) return false;
+    if (type === 'TRANSFER' && (!fromAccountId || !toAccountId)) return false;
 
     return true;
-  }, [
-    title,
-    amount,
-    accountError,
-    type,
-    categoryId,
-    showFromAccount,
-    fromAccountId,
-    showToAccount,
-    toAccountId,
-  ]);
+  }, [title, amount, accountError, type, fromAccountId, toAccountId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +127,6 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
         type: type,
         description: title,
         transactionDate: transactionDate || new Date().toISOString().split('T')[0],
-        categoryId: categoryId,
         fromAccountId: showFromAccount ? fromAccountId : undefined,
         toAccountId: showToAccount ? toAccountId : undefined,
       };
@@ -220,7 +145,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     }
   };
 
-  const filteredCategories = categories.filter((c) => c.type === type);
+  const isTransfer = type === 'TRANSFER';
 
   return (
     <AnimatePresence>
@@ -271,37 +196,51 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
                 <button
                   type="button"
                   onClick={() => setType('EXPENSE')}
-                  className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all duration-200 ${
+                  className={`flex-1 py-2 px-3 rounded-full text-sm font-medium transition-all duration-200 ${
                     type === 'EXPENSE'
                       ? 'bg-neon-pink/20 text-neon-pink'
                       : 'text-white/40 hover:text-white/60'
                   }`}
                 >
-                  <ArrowDownRight className="w-4 h-4 inline mr-1.5" />
+                  <ArrowDownRight className="w-4 h-4 inline mr-1" />
                   Expense
                 </button>
                 <button
                   type="button"
                   onClick={() => setType('INCOME')}
-                  className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all duration-200 ${
+                  className={`flex-1 py-2 px-3 rounded-full text-sm font-medium transition-all duration-200 ${
                     type === 'INCOME'
                       ? 'bg-neon-cyan/20 text-neon-cyan'
                       : 'text-white/40 hover:text-white/60'
                   }`}
                 >
-                  <ArrowUpRight className="w-4 h-4 inline mr-1.5" />
+                  <ArrowUpRight className="w-4 h-4 inline mr-1" />
                   Income
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('TRANSFER')}
+                  className={`flex-1 py-2 px-3 rounded-full text-sm font-medium transition-all duration-200 ${
+                    type === 'TRANSFER'
+                      ? 'bg-neon-purple/20 text-neon-purple'
+                      : 'text-white/40 hover:text-white/60'
+                  }`}
+                >
+                  <ArrowRightLeft className="w-4 h-4 inline mr-1" />
+                  Transfer
                 </button>
               </div>
 
               {/* Title / Description */}
               <div>
-                <label className="input-label">Title / Description</label>
+                <label className="input-label">
+                  {isTransfer ? 'Description' : 'Title / Description'}
+                </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Groceries"
+                  placeholder={isTransfer ? 'e.g. Transfer to savings' : 'e.g. Groceries'}
                   autoFocus={!transaction}
                   className="input"
                 />
@@ -331,40 +270,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
                 />
               </div>
 
-              {/* Category */}
-              <div>
-                <label className="input-label">
-                  Category{type === 'INCOME' ? <span className="text-neon-pink"> *</span> : ''}
-                </label>
-                <select
-                  value={categoryId || ''}
-                  onChange={(e) =>
-                    setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
-                  }
-                  className="input"
-                >
-                  {type === 'INCOME' && (
-                    <option value="" className="bg-surface text-white">
-                      Select category
-                    </option>
-                  )}
-                  {filteredCategories.length === 0 ? (
-                    <option value="" disabled className="bg-surface text-white/40">
-                      {categories.length === 0
-                        ? 'Loading categories...'
-                        : 'No categories available'}
-                    </option>
-                  ) : (
-                    filteredCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id} className="bg-surface text-white">
-                        {cat.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              {/* From Account - shown for EXPENSE or Self Transfer */}
+              {/* From Account - shown for EXPENSE or TRANSFER */}
               {showFromAccount && (
                 <div>
                   <label className="input-label">
@@ -395,7 +301,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
                 </div>
               )}
 
-              {/* To Account - shown for INCOME or Self Transfer */}
+              {/* To Account - shown for INCOME or TRANSFER */}
               {showToAccount && (
                 <div>
                   <label className="input-label">

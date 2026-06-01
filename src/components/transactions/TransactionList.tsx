@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Edit2, Trash2, Calendar } from 'lucide-react';
-import {
-  Card,
-  Button,
-  Badge,
-  Table,
-  Modal,
-} from '../ui';
+import { Card, Button, Badge, Table, Modal } from '../ui';
 import DateRangeFilter, {
   getCurrentMonthStart,
   getCurrentMonthEnd,
@@ -75,7 +69,7 @@ const TransactionList: React.FC = () => {
         20,
         'createdAt,desc',
         appliedStartDate,
-        appliedEndDate
+        appliedEndDate,
       );
       if (response.data && response.data.data) {
         setTransactions(response.data.data.content);
@@ -162,7 +156,7 @@ const TransactionList: React.FC = () => {
   };
 
   const formatTransactionAmount = (amount: number, type: string): string => {
-    const prefix = type === 'INCOME' ? '+' : '-';
+    const prefix = type === 'INCOME' ? '+' : type === 'TRANSFER' ? '↔ ' : '-';
     return `${prefix}${formatAmount(convertAmount(Math.abs(amount)))}`;
   };
 
@@ -203,9 +197,7 @@ const TransactionList: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Transactions
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Manage your income and expenses
           </p>
@@ -213,7 +205,9 @@ const TransactionList: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Calendar className="w-4 h-4" />
-            <span>{formatDisplayDate(appliedStartDate)} - {formatDisplayDate(appliedEndDate)}</span>
+            <span>
+              {formatDisplayDate(appliedStartDate)} - {formatDisplayDate(appliedEndDate)}
+            </span>
           </div>
           <Button
             variant="primary"
@@ -279,18 +273,20 @@ const TransactionList: React.FC = () => {
                     </div>
                   </Table.BodyCell>
                   <Table.BodyCell>
-                    <Badge variant="neutral">
-                      {getCategoryName(transaction.category?.id)}
-                    </Badge>
+                    <Badge variant="neutral">{getCategoryName(transaction.category?.id)}</Badge>
                   </Table.BodyCell>
-                  <Table.BodyCell className="font-medium">
-                    {transaction.description}
-                  </Table.BodyCell>
+                  <Table.BodyCell className="font-medium">{transaction.description}</Table.BodyCell>
                   <Table.BodyCell align="right">
                     <Badge
-                      variant={transaction.type === 'INCOME' ? 'success' : 'danger'}
+                      variant={
+                        transaction.type === 'INCOME'
+                          ? 'success'
+                          : transaction.type === 'TRANSFER'
+                            ? 'warning'
+                            : 'danger'
+                      }
                     >
-                      {transaction.type}
+                      {transaction.type === 'TRANSFER' ? 'TRANSFER' : transaction.type}
                     </Badge>
                   </Table.BodyCell>
                   <Table.BodyCell
@@ -298,7 +294,9 @@ const TransactionList: React.FC = () => {
                     className={`font-bold ${
                       transaction.type === 'INCOME'
                         ? 'text-success-600 dark:text-success-400'
-                        : 'text-danger-600 dark:text-danger-400'
+                        : transaction.type === 'TRANSFER'
+                          ? 'text-warning-600 dark:text-warning-400'
+                          : 'text-danger-600 dark:text-danger-400'
                     }`}
                   >
                     {formatTransactionAmount(transaction.amount, transaction.type)}
@@ -384,7 +382,11 @@ const TransactionList: React.FC = () => {
             Are you sure you want to delete this transaction? This action cannot be undone.
           </p>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setOpenDeleteDialog(false)} disabled={deleting}>
+            <Button
+              variant="secondary"
+              onClick={() => setOpenDeleteDialog(false)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
             <Button variant="danger" onClick={confirmDeleteTransaction} loading={deleting}>

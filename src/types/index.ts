@@ -57,7 +57,7 @@ export interface CategoryFormData {
 }
 
 // Transaction Types
-export type TransactionType = 'INCOME' | 'EXPENSE';
+export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 export type Frequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 export type BudgetPeriod = 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 

@@ -3,7 +3,12 @@ import { motion } from 'motion/react';
 import { Plus, Edit2, Trash2, Repeat, Calendar } from 'lucide-react';
 import Header from '../components/ui/Header';
 import { recurringTransactionAPI, categoryAPI, accountAPI } from '../services/api';
-import { RecurringTransactionResponse, RecurringTransactionRequest, Category } from '../types';
+import {
+  RecurringTransactionResponse,
+  RecurringTransactionRequest,
+  Category,
+  TransactionType,
+} from '../types';
 import { AccountSummary } from '../types/account';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getErrorMessage } from '../services/errorUtils';
@@ -19,7 +24,7 @@ const RecurringTransactions: React.FC = () => {
   const [editing, setEditing] = useState<RecurringTransactionResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formAmount, setFormAmount] = useState('');
-  const [formType, setFormType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
+  const [formType, setFormType] = useState<TransactionType>('EXPENSE');
   const [formCategoryId, setFormCategoryId] = useState<number | undefined>(undefined);
   const [formFrequency, setFormFrequency] = useState<'MONTHLY' | 'QUARTERLY' | 'YEARLY'>('MONTHLY');
   const [formDayOfMonth, setFormDayOfMonth] = useState(1);
