@@ -195,10 +195,10 @@ const Transactions: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white/90 truncate">
-                        {tx.description || 'No description'}
+                        {getCategoryName(tx.category)}
                       </p>
                       <p className="text-xs text-white/40">
-                        {getCategoryName(tx.category)} •{' '}
+                        {tx.description ? tx.description + ' • ' : ''}
                         {format(new Date(tx.transactionDate), 'MMM dd')}
                       </p>
                     </div>
