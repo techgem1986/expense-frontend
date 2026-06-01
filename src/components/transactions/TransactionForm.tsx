@@ -59,7 +59,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         type: yup.string().required('Type is required').oneOf(['INCOME', 'EXPENSE']),
         description: yup.string(),
         transactionDate: yup.string().required('Date is required'),
-        categoryId: yup.number().optional().nullable(),
+        categoryId: yup
+          .number()
+          .nullable()
+          .test('category-required', 'Category is required for income', function (value) {
+            const { type } = this.parent;
+            if (type === 'INCOME') {
+              return value != null && Number(value) > 0;
+            }
+            return true;
+          }),
         fromAccountId: yup
           .number()
           .test('from-account-required', 'From Account is required', function (value) {
@@ -247,8 +256,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     // To Account required for Income or Self Transfer
     if ((isIncome || isTransfer) && !toAccountId) return false;
 
+    // Category required for Income
+    if (isIncome && !selectedCategoryIdRaw) return false;
+
     return true;
-  }, [accountError, selectedType, isMoneyTransferCategory, fromAccountId, toAccountId]);
+  }, [
+    accountError,
+    selectedType,
+    isMoneyTransferCategory,
+    fromAccountId,
+    toAccountId,
+    selectedCategoryIdRaw,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -316,20 +335,27 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           htmlFor="categoryId"
           className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
         >
-          Category
+          Category{selectedType === 'INCOME' ? ' *' : ''}
         </label>
         <select
           id="categoryId"
           {...register('categoryId')}
-          className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+          className={`w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 ${
+            errors.categoryId
+              ? 'border-danger-500 dark:border-danger-500'
+              : 'border-gray-300 dark:border-gray-600'
+          }`}
         >
-          <option value="">None</option>
+          <option value="">{selectedType === 'INCOME' ? 'Select category' : 'None'}</option>
           {filteredCategories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name}
             </option>
           ))}
         </select>
+        {errors.categoryId && (
+          <p className="mt-1 text-xs text-danger-500">{errors.categoryId.message}</p>
+        )}
       </div>
 
       {/* To Account - shown for INCOME transactions or when Money Transfer is selected */}

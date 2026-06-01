@@ -94,10 +94,15 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
   }, [isOpen, fetchCategories, fetchAccounts]);
 
   useEffect(() => {
-    // Update categoryId when type changes
-    const filtered = categories.filter((c) => c.type === type);
-    if (filtered.length > 0 && !filtered.find((c) => c.id === categoryId)) {
-      setCategoryId(filtered[0].id);
+    // Update categoryId when type changes to EXPENSE
+    if (type === 'EXPENSE') {
+      const filtered = categories.filter((c) => c.type === 'EXPENSE');
+      if (filtered.length > 0 && !filtered.find((c) => c.id === categoryId)) {
+        setCategoryId(filtered[0].id);
+      }
+    } else {
+      // For INCOME, clear the selection so user must choose from the dropdown
+      setCategoryId(undefined);
     }
   }, [type, categories, categoryId]);
 
@@ -126,6 +131,9 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
     if (isNaN(numAmount) || numAmount <= 0) return false;
     if (accountError) return false;
 
+    // Category required for Income
+    if (type === 'INCOME' && !categoryId) return false;
+
     // From Account required for Expense or Self Transfer
     if (showFromAccount && !fromAccountId) return false;
 
@@ -133,7 +141,17 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
     if (showToAccount && !toAccountId) return false;
 
     return true;
-  }, [title, amount, accountError, showFromAccount, fromAccountId, showToAccount, toAccountId]);
+  }, [
+    title,
+    amount,
+    accountError,
+    type,
+    categoryId,
+    showFromAccount,
+    fromAccountId,
+    showToAccount,
+    toAccountId,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,24 +286,37 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
               </div>
 
               {/* Category */}
-              {type === 'EXPENSE' && filteredCategories.length > 0 && (
-                <div>
-                  <label className="input-label">Category</label>
-                  <select
-                    value={categoryId || ''}
-                    onChange={(e) =>
-                      setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
-                    }
-                    className="input"
-                  >
-                    {filteredCategories.map((cat) => (
+              <div>
+                <label className="input-label">
+                  Category{type === 'INCOME' ? <span className="text-neon-pink"> *</span> : ''}
+                </label>
+                <select
+                  value={categoryId || ''}
+                  onChange={(e) =>
+                    setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
+                  }
+                  className="input"
+                >
+                  {type === 'INCOME' && (
+                    <option value="" className="bg-surface text-white">
+                      Select category
+                    </option>
+                  )}
+                  {filteredCategories.length === 0 ? (
+                    <option value="" disabled className="bg-surface text-white/40">
+                      {categories.length === 0
+                        ? 'Loading categories...'
+                        : 'No categories available'}
+                    </option>
+                  ) : (
+                    filteredCategories.map((cat) => (
                       <option key={cat.id} value={cat.id} className="bg-surface text-white">
                         {cat.name}
                       </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+                    ))
+                  )}
+                </select>
+              </div>
 
               {/* From Account - shown for EXPENSE or Self Transfer */}
               {showFromAccount && (
