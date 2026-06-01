@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
+import { TransactionResponse } from '../../types';
 import { Category } from '../../types';
+import { transactionAPI, categoryAPI, accountAPI } from '../../services/api';
 import { Account } from '../../types/account';
 import { getErrorMessage } from '../../services/errorUtils';
 
@@ -10,9 +11,15 @@ interface AddExpenseDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  transaction?: TransactionResponse | null;
 }
 
-const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, onSuccess }) => {
+const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  transaction,
+}) => {
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -23,8 +30,10 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
   const [toAccountId, setToAccountId] = useState<number | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transactionDate, setTransactionDate] = useState<string>('');
+  const initializedRef = React.useRef(false);
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = useCallback(async (skipDefaultCategory = false) => {
     try {
       const response = await categoryAPI.getAll();
       const responseBody = response.data;
@@ -37,10 +46,12 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
         data = responseBody.data;
       }
       setCategories(data);
-      // Set default category for EXPENSE type
-      const expenseCats = data.filter((c) => c.type === 'EXPENSE');
-      if (expenseCats.length > 0) {
-        setCategoryId(expenseCats[0].id);
+      // Set default category for EXPENSE type only when creating (not editing)
+      if (!skipDefaultCategory) {
+        const expenseCats = data.filter((c) => c.type === 'EXPENSE');
+        if (expenseCats.length > 0) {
+          setCategoryId(expenseCats[0].id);
+        }
       }
     } catch (err: any) {
       console.error('Failed to fetch categories:', err);
@@ -81,19 +92,42 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
 
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      initializedRef.current = false;
+      const isEdit = !!transaction;
+
+      if (isEdit) {
+        // Edit mode: pre-fill from existing transaction, skip default category
+        setType(transaction.type);
+        setTitle(transaction.description || '');
+        setAmount(String(Math.abs(transaction.amount)));
+        setCategoryId(transaction.category?.id);
+        setFromAccountId(transaction.fromAccount?.id);
+        setToAccountId(transaction.toAccount?.id);
+        setTransactionDate(transaction.transactionDate);
+        fetchCategories(true); // pass skipDefaultCategory=true
+      } else {
+        // Create mode: reset to defaults
+        setTitle('');
+        setAmount('');
+        setType('EXPENSE');
+        setCategoryId(undefined);
+        setFromAccountId(undefined);
+        setToAccountId(undefined);
+        setTransactionDate(new Date().toISOString().split('T')[0]);
+        fetchCategories(false);
+      }
+
       fetchAccounts();
-      setTitle('');
-      setAmount('');
-      setType('EXPENSE');
-      setFromAccountId(undefined);
-      setToAccountId(undefined);
       setError(null);
       setSubmitting(false);
+      initializedRef.current = true;
     }
-  }, [isOpen, fetchCategories, fetchAccounts]);
+  }, [isOpen, transaction, fetchCategories, fetchAccounts]);
 
   useEffect(() => {
+    // Only auto-set category when user changes type, not during initial load in edit mode
+    if (!initializedRef.current) return;
+
     // Update categoryId when type changes to EXPENSE
     if (type === 'EXPENSE') {
       const filtered = categories.filter((c) => c.type === 'EXPENSE');
@@ -162,21 +196,21 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
     setSubmitting(true);
     setError(null);
     try {
-      await transactionAPI.create({
+      const payload = {
         amount: numAmount,
         type: type,
         description: title,
-        transactionDate: new Date().toISOString().split('T')[0],
+        transactionDate: transactionDate || new Date().toISOString().split('T')[0],
         categoryId: categoryId,
         fromAccountId: showFromAccount ? fromAccountId : undefined,
         toAccountId: showToAccount ? toAccountId : undefined,
-      });
-      setTitle('');
-      setAmount('');
-      setType('EXPENSE');
-      setFromAccountId(undefined);
-      setToAccountId(undefined);
-      setError(null);
+      };
+
+      if (transaction) {
+        await transactionAPI.update(transaction.id, payload);
+      } else {
+        await transactionAPI.create(payload);
+      }
       onClose();
       onSuccess?.();
     } catch (err: any) {
@@ -221,7 +255,8 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
               NEW ENTRY
             </p>
             <h2 className="font-display text-2xl font-light tracking-tight mb-6">
-              Log <span className="text-neon-cyan font-bold">Transaction</span>
+              {transaction ? 'Edit' : 'Log'}{' '}
+              <span className="text-neon-cyan font-bold">Transaction</span>
             </h2>
 
             {error && (
@@ -259,15 +294,26 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
                 </button>
               </div>
 
-              {/* Title */}
+              {/* Title / Description */}
               <div>
-                <label className="input-label">Title</label>
+                <label className="input-label">Title / Description</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Groceries"
-                  autoFocus
+                  autoFocus={!transaction}
+                  className="input"
+                />
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="input-label">Date</label>
+                <input
+                  type="date"
+                  value={transactionDate}
+                  onChange={(e) => setTransactionDate(e.target.value)}
                   className="input"
                 />
               </div>
@@ -389,7 +435,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ isOpen, onClose, on
                 disabled={!isFormValid || submitting}
                 className="w-full py-3 rounded-full bg-white text-black font-bold uppercase tracking-widest text-sm hover:bg-neon-cyan transition-all duration-200 disabled:opacity-50"
               >
-                {submitting ? 'SAVING...' : 'COMMIT ENTRY'}
+                {submitting ? 'SAVING...' : transaction ? 'UPDATE ENTRY' : 'COMMIT ENTRY'}
               </button>
             </form>
           </motion.div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Trash2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Search, Trash2, Edit2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import Header from '../components/ui/Header';
+import AddExpenseDialog from '../components/ui/AddExpenseDialog';
 import { transactionAPI, categoryAPI } from '../services/api';
 import { TransactionResponse, Category } from '../types';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -29,6 +30,8 @@ const Transactions: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionResponse | null>(null);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -92,6 +95,22 @@ const Transactions: React.FC = () => {
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to delete transaction'));
     }
+  };
+
+  const handleEdit = (transaction: TransactionResponse) => {
+    setEditingTransaction(transaction);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setEditDialogOpen(false);
+    setEditingTransaction(null);
+    fetchTransactions();
+  };
+
+  const handleEditClose = () => {
+    setEditDialogOpen(false);
+    setEditingTransaction(null);
   };
 
   const getCategoryName = (cat?: Category): string => cat?.name || 'Uncategorized';
@@ -209,8 +228,16 @@ const Transactions: React.FC = () => {
                       {formatAmount(convertAmount(Math.abs(tx.amount)))}
                     </span>
                     <button
+                      onClick={() => handleEdit(tx)}
+                      className="opacity-0 group-hover:opacity-100 p-2 rounded-lg text-white/20 hover:text-neon-cyan hover:bg-neon-cyan/10 transition-all"
+                      aria-label="Edit transaction"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(tx.id)}
                       className="opacity-0 group-hover:opacity-100 p-2 rounded-lg text-white/20 hover:text-neon-pink hover:bg-neon-pink/10 transition-all"
+                      aria-label="Delete transaction"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -246,6 +273,14 @@ const Transactions: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Edit Transaction Dialog */}
+      <AddExpenseDialog
+        isOpen={editDialogOpen}
+        onClose={handleEditClose}
+        onSuccess={handleEditSuccess}
+        transaction={editingTransaction}
+      />
     </div>
   );
 };
