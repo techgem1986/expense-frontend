@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft } from 'lucide-react';
-import { TransactionResponse, TransactionType } from '../../types';
-import { transactionAPI, accountAPI } from '../../services/api';
+import { TransactionResponse, TransactionType, Category } from '../../types';
+import { transactionAPI, accountAPI, categoryAPI } from '../../services/api';
 import { Account } from '../../types/account';
 import { getErrorMessage } from '../../services/errorUtils';
 
@@ -23,12 +23,20 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [fromAccountId, setFromAccountId] = useState<number | undefined>(undefined);
   const [toAccountId, setToAccountId] = useState<number | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactionDate, setTransactionDate] = useState<string>('');
   const initializedRef = React.useRef(false);
+
+  // Find Money Transfer category ID from the categories list
+  const moneyTransferCategoryId = useMemo(() => {
+    const mtCategory = categories.find((cat) => cat.name.toLowerCase() === 'money transfer');
+    return mtCategory?.id;
+  }, [categories]);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -46,6 +54,25 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await categoryAPI.getAll();
+      const responseBody = response.data;
+      let data: Category[] = [];
+      if (Array.isArray(responseBody)) {
+        data = responseBody;
+      } else if (responseBody?.data?.content && Array.isArray(responseBody.data.content)) {
+        data = responseBody.data.content;
+      } else if (Array.isArray(responseBody?.data)) {
+        data = responseBody.data;
+      }
+      setCategories(data);
+    } catch (err: any) {
+      console.error('Failed to fetch categories:', err);
+      setCategories([]);
+    }
+  }, []);
+
   // Determine which account fields to show
   const showFromAccount = type === 'EXPENSE' || type === 'TRANSFER';
   const showToAccount = type === 'INCOME' || type === 'TRANSFER';
@@ -60,6 +87,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
         setType(transaction.type);
         setTitle(transaction.description || '');
         setAmount(String(Math.abs(transaction.amount)));
+        setCategoryId(transaction.category?.id);
         setFromAccountId(transaction.fromAccount?.id);
         setToAccountId(transaction.toAccount?.id);
         setTransactionDate(transaction.transactionDate);
@@ -68,17 +96,19 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
         setTitle('');
         setAmount('');
         setType('EXPENSE');
+        setCategoryId(undefined);
         setFromAccountId(undefined);
         setToAccountId(undefined);
         setTransactionDate(new Date().toISOString().split('T')[0]);
       }
 
       fetchAccounts();
+      fetchCategories();
       setError(null);
       setSubmitting(false);
       initializedRef.current = true;
     }
-  }, [isOpen, transaction, fetchAccounts]);
+  }, [isOpen, transaction, fetchAccounts, fetchCategories]);
 
   // Clear account IDs when they should no longer be shown
   useEffect(() => {
@@ -90,6 +120,31 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     }
   }, [showFromAccount, showToAccount]);
 
+  // When TRANSFER type is selected, auto-set category to Money Transfer
+  useEffect(() => {
+    if (type === 'TRANSFER') {
+      if (moneyTransferCategoryId !== undefined) {
+        setCategoryId(moneyTransferCategoryId);
+      }
+    }
+  }, [type, moneyTransferCategoryId]);
+
+  // Auto-generate description for transfers when both accounts are selected
+  useEffect(() => {
+    if (type !== 'TRANSFER') return;
+    if (fromAccountId && toAccountId) {
+      const fromAccount = accounts.find((a) => a.id === fromAccountId);
+      const toAccount = accounts.find((a) => a.id === toAccountId);
+      if (fromAccount && toAccount) {
+        const generatedDesc = `Self Transfer from ${fromAccount.name} to ${toAccount.name}`;
+        // Only auto-generate if the current title is empty or was previously auto-generated
+        if (!title || title.startsWith('Self Transfer from')) {
+          setTitle(generatedDesc);
+        }
+      }
+    }
+  }, [type, fromAccountId, toAccountId, accounts, title]);
+
   // Check if from and to accounts are the same
   const accountError = useMemo(() => {
     if (fromAccountId && toAccountId && fromAccountId === toAccountId) {
@@ -97,6 +152,17 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     }
     return null;
   }, [fromAccountId, toAccountId]);
+
+  // Filter categories based on transaction type
+  const filteredCategories = useMemo(() => {
+    if (type === 'INCOME') {
+      return categories.filter((cat) => cat.type === 'INCOME');
+    } else if (type === 'EXPENSE') {
+      return categories.filter((cat) => cat.type === 'EXPENSE');
+    }
+    // TRANSFER: return empty - no categories needed for transfers
+    return [];
+  }, [categories, type]);
 
   // Check if the form is valid
   const isFormValid = useMemo(() => {
@@ -110,8 +176,11 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     if (type === 'EXPENSE' && !fromAccountId) return false;
     if (type === 'TRANSFER' && (!fromAccountId || !toAccountId)) return false;
 
+    // Category is required for INCOME
+    if (type === 'INCOME' && !categoryId) return false;
+
     return true;
-  }, [title, amount, accountError, type, fromAccountId, toAccountId]);
+  }, [title, amount, accountError, type, fromAccountId, toAccountId, categoryId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +191,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
     setSubmitting(true);
     setError(null);
     try {
-      const payload = {
+      const payload: any = {
         amount: numAmount,
         type: type,
         description: title,
@@ -130,6 +199,11 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
         fromAccountId: showFromAccount ? fromAccountId : undefined,
         toAccountId: showToAccount ? toAccountId : undefined,
       };
+
+      // Include categoryId for all transaction types
+      if (categoryId) {
+        payload.categoryId = categoryId;
+      }
 
       if (transaction) {
         await transactionAPI.update(transaction.id, payload);
@@ -269,6 +343,29 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
                   className="input"
                 />
               </div>
+
+              {/* Category Selection - shown for INCOME and EXPENSE (not TRANSFER) */}
+              {!isTransfer && (
+                <div>
+                  <label className="input-label">Category{type === 'INCOME' ? ' *' : ''}</label>
+                  <select
+                    value={categoryId || ''}
+                    onChange={(e) =>
+                      setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
+                    }
+                    className={`input ${!categoryId && type === 'INCOME' && error ? 'border-neon-pink/50' : ''}`}
+                  >
+                    <option value="" className="bg-surface text-white">
+                      {type === 'INCOME' ? 'Select category' : 'None'}
+                    </option>
+                    {filteredCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-surface text-white">
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* From Account - shown for EXPENSE or TRANSFER */}
               {showFromAccount && (

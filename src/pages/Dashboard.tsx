@@ -25,7 +25,7 @@ const getProgressColor = (pct: number) => {
 };
 
 const Dashboard: React.FC = () => {
-  const { formatAmount, convertAmount } = useCurrency();
+  const { formatAmount, convertAmount, getSymbol } = useCurrency();
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,7 +132,7 @@ const Dashboard: React.FC = () => {
                         borderRadius: '12px',
                         color: '#fff',
                       }}
-                      formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Spend']}
+                      formatter={(value) => [`${getSymbol()}${Number(value).toFixed(2)}`, 'Spend']}
                     />
                     <Area
                       type="monotone"

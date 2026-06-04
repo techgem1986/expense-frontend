@@ -162,6 +162,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   }, [selectedType, isMoneyTransferCategory, setValue]);
 
+  // Auto-generate description for Self Transfer when Money Transfer category is selected
+  // and both accounts are set
+  useEffect(() => {
+    if (!isMoneyTransferCategory || !fromAccountId || !toAccountId) return;
+    const currentDesc = watch('description');
+    const fromAccount = accounts.find((a) => a.id === fromAccountId);
+    const toAccount = accounts.find((a) => a.id === toAccountId);
+    if (fromAccount && toAccount) {
+      const generatedDesc = `Self Transfer from ${fromAccount.name} to ${toAccount.name}`;
+      if (!currentDesc || currentDesc.startsWith('Self Transfer from')) {
+        setValue('description', generatedDesc);
+      }
+    }
+  }, [isMoneyTransferCategory, fromAccountId, toAccountId, accounts, setValue, watch]);
+
   // Validate that From and To accounts are different when both are shown
   useEffect(() => {
     if (fromAccountId && toAccountId && fromAccountId === toAccountId) {
