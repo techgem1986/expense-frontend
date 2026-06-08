@@ -81,9 +81,7 @@ const Analytics: React.FC = () => {
             transition={{ delay: 0.05 }}
             className="col-span-12 lg:col-span-7 card p-8"
           >
-            <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-6">
-              Income vs Burn
-            </p>
+            <h2 className="font-display text-2xl font-light tracking-tight mb-6">Income vs Burn</h2>
             <div className="h-72">
               {monthlyChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -129,9 +127,7 @@ const Analytics: React.FC = () => {
             transition={{ delay: 0.1 }}
             className="col-span-12 lg:col-span-5 card p-8"
           >
-            <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-6">
-              Category Split
-            </p>
+            <h2 className="font-display text-2xl font-light tracking-tight mb-6">Category Split</h2>
             <div className="h-64">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">

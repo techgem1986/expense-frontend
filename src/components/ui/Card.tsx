@@ -51,23 +51,14 @@ interface CardHeaderProps {
   className?: string;
 }
 
-const CardHeader: React.FC<CardHeaderProps> = ({
-  title,
-  subtitle,
-  action,
-  className = '',
-}) => {
+const CardHeader: React.FC<CardHeaderProps> = ({ title, subtitle, action, className = '' }) => {
   return (
     <div className={`flex items-center justify-between mb-4 ${className}`}>
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-display font-semibold text-gray-900 dark:text-white">
           {title}
         </h3>
-        {subtitle && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {subtitle}
-          </p>
-        )}
+        {subtitle && <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>

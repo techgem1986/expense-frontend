@@ -79,7 +79,7 @@ const ModalComponent: React.FC<ModalProps> = ({
             {title && (
               <h3
                 id="modal-title"
-                className="text-lg font-semibold text-gray-900 dark:text-white"
+                className="text-lg font-display font-semibold text-gray-900 dark:text-white"
               >
                 {title}
               </h3>
@@ -97,9 +97,7 @@ const ModalComponent: React.FC<ModalProps> = ({
         )}
 
         {/* Modal Content */}
-        <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-80px)]">
-          {children}
-        </div>
+        <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-80px)]">{children}</div>
       </div>
     </div>
   );
@@ -113,7 +111,9 @@ interface ModalFooterProps {
 
 const ModalFooter: React.FC<ModalFooterProps> = ({ children, className = '' }) => {
   return (
-    <div className={`flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 ${className}`}>
+    <div
+      className={`flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 ${className}`}
+    >
       {children}
     </div>
   );

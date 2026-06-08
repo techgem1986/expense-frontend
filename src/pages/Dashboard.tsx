@@ -12,7 +12,8 @@ import {
 import { TrendingUp, TrendingDown, Target, Wallet } from 'lucide-react';
 import Header from '../components/ui/Header';
 import AnimatedAmount from '../components/ui/AnimatedAmount';
-import { analyticsAPI, accountAPI } from '../services/api';
+import SetupWizard from '../components/setup/SetupWizard';
+import { analyticsAPI, accountAPI, categoryAPI, recurringTransactionAPI } from '../services/api';
 import { AnalyticsResponse } from '../types';
 import { Account } from '../types/account';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -30,6 +31,8 @@ const Dashboard: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
@@ -60,9 +63,64 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  // Check if user needs setup wizard
+  const checkSetupStatus = useCallback(async () => {
+    try {
+      // Check accounts
+      const accRes = await accountAPI.getAll(0, 5);
+      const accData = accRes.data?.data?.content || accRes.data?.data || [];
+      const hasAccounts = Array.isArray(accData) ? accData.length > 0 : false;
+
+      // Check user-specific categories
+      let hasCategories = false;
+      try {
+        const catRes = await categoryAPI.getAll(0, 5);
+        const catData = catRes.data?.data?.content || catRes.data?.data || [];
+        hasCategories = Array.isArray(catData) ? catData.length > 0 : false;
+      } catch {
+        // Categories endpoint might not be available
+      }
+
+      // Check recurring transactions
+      let hasRecurring = false;
+      try {
+        const recRes = await recurringTransactionAPI.getAll(0, 5);
+        const recData = recRes.data?.data?.content || recRes.data?.data || [];
+        hasRecurring = Array.isArray(recData) ? recData.length > 0 : false;
+      } catch {
+        // Recurring endpoint might not be available
+      }
+
+      // Show wizard only if ALL three (accounts, categories, recurring) are missing
+      // i.e. brand new user with no data at all
+      if (!hasAccounts && !hasCategories && !hasRecurring) {
+        setShowSetup(true);
+      }
+    } catch {
+      // If check fails, just show the normal dashboard
+    } finally {
+      setCheckingSetup(false);
+    }
+  }, []);
+
   useEffect(() => {
-    Promise.all([fetchAnalytics(), fetchAccounts()]).finally(() => setLoading(false));
-  }, [fetchAnalytics, fetchAccounts]);
+    Promise.all([fetchAnalytics(), fetchAccounts(), checkSetupStatus()]).finally(() =>
+      setLoading(false),
+    );
+  }, [fetchAnalytics, fetchAccounts, checkSetupStatus]);
+
+  const handleWizardComplete = () => {
+    setShowSetup(false);
+    localStorage.setItem('setupWizardDismissed', 'true');
+    // Refresh data
+    fetchAnalytics();
+    fetchAccounts();
+  };
+
+  const handleWizardSkip = () => {
+    setShowSetup(false);
+    localStorage.setItem('setupWizardDismissed', 'true');
+  };
 
   const totalIncome = analytics?.totalIncome || 0;
   const totalExpenses = analytics?.totalExpenses || 0;
@@ -83,6 +141,11 @@ const Dashboard: React.FC = () => {
         <div className="mb-6 bg-neon-pink/10 border border-neon-pink/20 text-neon-pink px-4 py-3 rounded-2xl text-sm">
           {error}
         </div>
+      )}
+
+      {/* Setup Wizard for new users */}
+      {showSetup && !checkingSetup && (
+        <SetupWizard onComplete={handleWizardComplete} onSkip={handleWizardSkip} />
       )}
 
       {loading && !analytics ? (
