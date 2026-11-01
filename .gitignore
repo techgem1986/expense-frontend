@@ -30,6 +30,6 @@ yarn-error.log*
 .vscode/
 *.iml
 
-# Lock files (use npm ci in CI instead)
-package-lock.json
-yarn.lock
+# NOTE: package-lock.json is intentionally COMMITTED (not ignored) so that
+# `npm ci` is reproducible in CI (Cloudflare Pages / CircleCI). yarn.lock is
+# unused by this project.
