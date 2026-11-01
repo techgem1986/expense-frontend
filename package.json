@@ -47,6 +47,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -68,6 +70,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "autoprefixer": "^10.4.27",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",

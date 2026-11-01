@@ -10,6 +10,7 @@ const ignorePatterns = [
   '.eslintrc.js',
   'jest.config.js',
   'vite.config.*',
+  'playwright.config.ts',
   'tailwind.config.js',
   'postcss.config.js',
   'node_modules/',

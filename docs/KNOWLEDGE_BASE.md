@@ -319,8 +319,8 @@ npm run build
 npm test
 
 # Run Playwright E2E tests
-npx playwright test
-npx playwright test --ui
+npm run test:e2e
+npm run test:e2e:ui
 
 # Linting and formatting
 npm run lint

@@ -91,6 +91,7 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 | `npm start` | Start development server |
 | `npm run build` | Build for production |
 | `npm test` | Run tests |
+| `npm run test:e2e` | Run E2E tests with Playwright |
 | `npm run lint` | Run ESLint |
 | `npm run format` | Format code with Prettier |
 
@@ -101,10 +102,10 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 npm test
 
 # Run E2E tests with Playwright
-npx playwright test
+npm run test:e2e
 
 # Run E2E tests with UI
-npx playwright test --ui
+npm run test:e2e:ui
 ```
 
 ## Design System
