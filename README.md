@@ -141,14 +141,14 @@ The application supports dark mode with a toggle in the top navigation bar. Them
 The application communicates with a REST API. Configure the API base URL in `src/services/api.ts`:
 
 ```typescript
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 ```
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `REACT_APP_API_URL` | Backend API base URL |
+| `REACT_APP_API_BASE_URL` | Backend API base URL |
 
 ## Browser Support
 
