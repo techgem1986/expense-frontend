@@ -16,7 +16,7 @@ A premium enterprise admin dashboard for managing expenses, built with React and
 
 ## Tech Stack
 
-- **React 18** - UI framework with TypeScript
+- **React 19** - UI framework with TypeScript
 - **Tailwind CSS 3** - Utility-first CSS framework
 - **React Router 6** - Client-side routing
 - **Recharts** - Data visualization (charts)
@@ -65,7 +65,7 @@ src/
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 26+ 
 - npm or yarn
 
 ### Installation

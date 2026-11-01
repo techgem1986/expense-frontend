@@ -49,32 +49,26 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-deep px-4 py-12 relative overflow-hidden">
-      {/* Ambient glows */}
-      <div className="fixed -top-40 -right-40 w-96 h-96 rounded-full bg-neon-purple/20 blur-[120px] pointer-events-none animate-float" />
-      <div
-        className="fixed -bottom-40 -left-40 w-96 h-96 rounded-full bg-neon-cyan/15 blur-[120px] pointer-events-none animate-float"
-        style={{ animationDelay: '-2s' }}
-      />
-
-      <div className="w-full max-w-md relative z-10">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+      <div className="w-full max-w-md">
         {/* Logo & Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 border border-white/10 mb-4">
-            <span className="font-display font-bold text-neon-cyan text-2xl">Φ</span>
+        <div className="mb-8 text-center">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card">
+            <span className="font-brand text-xl font-bold text-foreground">Φ</span>
           </div>
-          <h1 className="font-display text-3xl font-light tracking-tight text-white">
-            Create <span className="text-neon-cyan font-bold">Account</span>
-          </h1>
-          <p className="text-white/40 text-xs uppercase tracking-wide font-medium mt-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create account</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Join Ledger.OS to manage your finances
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="glass-panel rounded-3xl p-8">
+        <div className="card rounded-xl p-6 sm:p-8">
           {error && (
-            <div className="mb-6 bg-neon-pink/10 border border-neon-pink/20 text-neon-pink px-4 py-3 rounded-2xl text-sm">
+            <div
+              role="alert"
+              className="mb-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
+            >
               {error}
             </div>
           )}
@@ -204,11 +198,7 @@ const Register: React.FC = () => {
               </span>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-full bg-white text-black font-bold uppercase tracking-widest text-sm hover:bg-neon-cyan transition-all duration-200 disabled:opacity-50"
-            >
+            <button type="submit" disabled={isLoading} className="btn-primary w-full py-3 text-sm">
               {isLoading ? 'Creating Account...' : 'Sign Up'}
             </button>
           </form>
@@ -221,7 +211,7 @@ const Register: React.FC = () => {
           </Link>
         </p>
 
-        <p className="mt-8 text-center text-xs text-white/20">
+        <p className="mt-8 text-center text-xs text-muted-foreground/70">
           © 2024 Ledger.OS. All rights reserved.
         </p>
       </div>

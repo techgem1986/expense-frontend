@@ -1,203 +1,369 @@
-import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Receipt,
-  PiggyBank,
   BarChart3,
-  Plus,
-  Wallet,
   Bell,
+  ChevronDown,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  PanelLeft,
+  PanelLeftClose,
+  PiggyBank,
+  Plus,
+  Receipt,
   Repeat,
+  Search,
   Tags,
-  ChevronLeft,
-  ChevronRight,
+  Wallet,
+  X,
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import AddExpenseDialog from './AddExpenseDialog';
+import CurrencySelector from '../CurrencySelector';
 
-const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/transactions', label: 'Transactions', icon: Receipt },
-  { path: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Overview',
+    items: [
+      { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+      { path: '/transactions', label: 'Transactions', icon: Receipt },
+      { path: '/budgets', label: 'Budgets', icon: PiggyBank },
+      { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Manage',
+    items: [
+      { path: '/accounts', label: 'Accounts', icon: Wallet },
+      { path: '/recurring', label: 'Recurring', icon: Repeat },
+      { path: '/categories', label: 'Categories', icon: Tags },
+    ],
+  },
+  {
+    label: 'System',
+    items: [{ path: '/alerts', label: 'Alerts', icon: Bell }],
+  },
+];
+
+const ALL_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
+
+const USER_MENU_LINKS: NavItem[] = [
+  { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { path: '/accounts', label: 'Accounts', icon: Wallet },
-  { path: '/recurring', label: 'Recurring', icon: Repeat },
-  { path: '/categories', label: 'Categories', icon: Tags },
   { path: '/alerts', label: 'Alerts', icon: Bell },
 ];
+
+const isItemActive = (pathname: string, path: string) =>
+  pathname === path || pathname.startsWith(`${path}/`);
 
 interface AppShellProps {
   children: React.ReactNode;
 }
 
+/**
+ * Application shell: collapsible grouped sidebar, breadcrumb header with
+ * workspace controls and a user menu, and a scrollable main content region.
+ */
 const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, logout } = useAuth();
 
-  const activePath =
-    NAV_ITEMS.find(
-      (item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/'),
-    )?.path || '/dashboard';
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const activeItem = ALL_ITEMS.find((item) => isItemActive(location.pathname, item.path));
+  const ActiveIcon = activeItem?.icon ?? LayoutDashboard;
+
+  // Close transient UI whenever the route changes
+  useEffect(() => {
+    setMobileOpen(false);
+    setUserMenuOpen(false);
+  }, [location.pathname]);
+
+  // Close the user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const initials =
+    `${user?.firstName?.charAt(0) ?? ''}${user?.lastName?.charAt(0) ?? ''}`.toUpperCase() || 'U';
+
+  const handleLogout = () => {
+    setUserMenuOpen(false);
+    logout();
+    navigate('/login');
+  };
+
+  const renderNav = (compact: boolean, onNavigate?: () => void) => (
+    <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Primary navigation">
+      {NAV_GROUPS.map((group) => (
+        <div key={group.label}>
+          <p className="nav-section-label">{group.label}</p>
+          <ul className="space-y-1">
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    onClick={onNavigate}
+                    title={compact ? item.label : undefined}
+                    className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className={compact ? 'sr-only' : 'truncate'}>{item.label}</span>
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+
+  const renderSidebarTop = (compact: boolean) => (
+    <div className="px-3 pt-4">
+      <div className={`flex items-center gap-2 ${compact ? 'justify-center' : 'px-1'}`}>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-white/[0.04]">
+          <span className="font-brand text-sm font-bold text-foreground">Φ</span>
+        </div>
+        {!compact && (
+          <span className="font-brand text-sm font-semibold text-foreground">ExpenseHub</span>
+        )}
+      </div>
+
+      <div className={`mt-4 flex items-center gap-2 ${compact ? 'flex-col' : ''}`}>
+        <button
+          type="button"
+          onClick={() => setDialogOpen(true)}
+          aria-label="Add expense"
+          title={compact ? 'Add expense' : undefined}
+          className={`btn-primary ${compact ? 'h-9 w-9 p-0' : 'flex-1 px-3 py-2'}`}
+        >
+          <Plus className="h-4 w-4" />
+          {!compact && <span>Add Expense</span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/transactions')}
+          aria-label="Search transactions"
+          title="Search transactions"
+          className="btn-secondary h-9 w-9 p-0"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderSidebarFooter = (compact: boolean) => (
+    <div className="mt-auto border-t border-border p-3">
+      <div className={`flex items-center gap-2 ${compact ? 'flex-col' : ''}`}>
+        <div
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-xs font-medium text-foreground"
+          aria-hidden="true"
+        >
+          {initials}
+        </div>
+        {!compact && (
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-foreground">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Log out"
+          title="Log out"
+          className="btn-ghost h-8 w-8 p-0"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-bg-deep relative overflow-hidden">
-      {/* Ambient glowing blobs */}
-      <div
-        className="fixed -top-40 -right-40 w-96 h-96 rounded-full bg-neon-purple/20 blur-[120px] pointer-events-none -z-10 animate-float"
-        style={{ animationDelay: '0s' }}
-      />
-      <div
-        className="fixed -bottom-40 -left-40 w-96 h-96 rounded-full bg-neon-cyan/15 blur-[120px] pointer-events-none -z-10 animate-float"
-        style={{ animationDelay: '-2s' }}
-      />
-
-      {/* Fixed Left Sidebar — collapsible vertical dock */}
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Desktop sidebar */}
       <aside
-        className={`
-          fixed inset-y-0 left-0 z-40
-          glass-panel border-r border-white/5
-          flex flex-col items-center py-6
-          transition-all duration-300 ease-in-out
-          overflow-x-hidden overflow-y-auto
-          ${isCollapsed ? 'w-20' : 'w-56'}
-        `}
+        className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-border bg-card transition-[width] duration-200 lg:flex ${
+          collapsed ? 'w-[76px]' : 'w-64'
+        }`}
       >
-        {/* Logo */}
-        <div
-          className={`
-            flex items-center justify-center mb-6 transition-all duration-300
-            ${isCollapsed ? 'w-12 h-12' : 'w-full px-4 gap-3'}
-          `}
-        >
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-cyan/30 to-neon-purple/30 border border-white/10 flex items-center justify-center flex-shrink-0">
-            <span className="font-display font-bold text-neon-cyan text-2xl">Φ</span>
-          </div>
-          {!isCollapsed && (
-            <motion.span
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2 }}
-              className="font-display font-bold text-neon-cyan text-xl whitespace-nowrap"
-            >
-              ExpenseHub
-            </motion.span>
-          )}
-        </div>
-
-        {/* Nav buttons */}
-        <nav className="flex flex-col gap-1.5 flex-1 w-full px-2">
-          {NAV_ITEMS.map((item) => {
-            const isActive = item.path === activePath;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`
-                  relative group flex items-center rounded-xl transition-all duration-200
-                  ${isCollapsed ? 'justify-center w-10 h-10 mx-auto' : 'w-full px-3 py-2.5 gap-3'}
-                  ${
-                    isActive
-                      ? 'bg-neon-cyan/10 text-neon-cyan'
-                      : 'text-white/30 hover:text-white/60 hover:bg-white/[0.03]'
-                  }
-                `}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="nav-indicator"
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    className="absolute -left-2.5 w-1 h-6 bg-neon-cyan rounded-r-full shadow-[0_0_10px_rgba(0,245,255,0.7)]"
-                  />
-                )}
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {!isCollapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-sm font-medium whitespace-nowrap"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-                {/* Tooltip shown only in collapsed mode */}
-                {isCollapsed && (
-                  <div className="absolute left-14 px-3 py-1.5 bg-surface border border-white/10 rounded-lg text-xs text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                    {item.label}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Bottom section: Add Expense + Toggle */}
-        <div
-          className={`
-          flex flex-col items-center gap-3 mt-auto pt-4 w-full px-2
-          ${isCollapsed ? '' : 'px-3'}
-        `}
-        >
-          {/* Add Expense Button */}
-          <button
-            onClick={() => setDialogOpen(true)}
-            className={`
-              flex items-center justify-center rounded-full bg-neon-cyan
-              shadow-[0_0_20px_rgba(0,245,255,0.5)] hover:scale-110 transition-transform duration-200 flex-shrink-0
-              ${isCollapsed ? 'w-10 h-10' : 'w-full py-2.5 rounded-xl gap-2'}
-            `}
-          >
-            <Plus className={isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} />
-            {!isCollapsed && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className="text-sm font-semibold text-black whitespace-nowrap"
-              >
-                Add Expense
-              </motion.span>
-            )}
-          </button>
-
-          {/* Collapse/Expand Toggle */}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.05] transition-colors duration-200"
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
-        </div>
+        {renderSidebarTop(collapsed)}
+        {renderNav(collapsed)}
+        {renderSidebarFooter(collapsed)}
       </aside>
 
-      {/* Main Content Area */}
-      <main
-        className={`
-          py-8 sm:py-12 pr-6 sm:pr-12 max-w-[1600px] mx-auto min-h-screen
-          transition-all duration-300 ease-in-out
-          ${isCollapsed ? 'pl-24 sm:pl-28' : 'pl-60 sm:pl-64'}
-        `}
-      >
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {children}
-        </motion.div>
-      </main>
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-border bg-card">
+            <div className="flex items-center justify-end px-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close navigation"
+                className="btn-ghost h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {renderSidebarTop(false)}
+            {renderNav(false, () => setMobileOpen(false))}
+            {renderSidebarFooter(false)}
+          </aside>
+        </div>
+      )}
 
-      {/* Global Add Expense Dialog */}
+      {/* Content column */}
+      <div
+        className={`flex min-h-screen flex-col transition-[padding] duration-200 ${
+          collapsed ? 'lg:pl-[76px]' : 'lg:pl-64'
+        }`}
+      >
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur md:px-6">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation"
+            className="btn-ghost h-8 w-8 p-0 lg:hidden"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-pressed={collapsed}
+            className="btn-ghost hidden h-8 w-8 p-0 lg:inline-flex"
+          >
+            {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+          <span className="mx-1 hidden h-5 w-px bg-border lg:block" aria-hidden="true" />
+          <div className="flex min-w-0 items-center gap-2">
+            <ActiveIcon
+              className="hidden h-4 w-4 text-muted-foreground sm:block"
+              aria-hidden="true"
+            />
+            <span className="truncate text-sm font-medium text-foreground">
+              {activeItem?.label ?? 'Overview'}
+            </span>
+          </div>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <CurrencySelector />
+            <button
+              type="button"
+              onClick={() => navigate('/alerts')}
+              aria-label="Alerts"
+              className="btn-ghost h-8 w-8 p-0"
+            >
+              <Bell className="h-4 w-4" />
+            </button>
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((value) => !value)}
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                aria-label="Account menu"
+                className="flex items-center gap-1.5 rounded-lg p-1 pr-2 transition-colors duration-150 hover:bg-white/[0.04]"
+              >
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.08] text-xs font-medium text-foreground"
+                  aria-hidden="true"
+                >
+                  {initials}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-card shadow-lg"
+                >
+                  <div className="border-b border-border px-3 py-2.5">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                  <div className="py-1">
+                    {USER_MENU_LINKS.map((link) => {
+                      const Icon = link.icon;
+                      return (
+                        <button
+                          key={link.path}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            navigate(link.path);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:bg-white/[0.04] hover:text-foreground"
+                        >
+                          <Icon className="h-4 w-4" />
+                          {link.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-border py-1">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-danger transition-colors duration-150 hover:bg-white/[0.04]"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Log out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 px-4 py-5 md:px-6 md:py-6">
+          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+        </main>
+      </div>
+
       <AddExpenseDialog isOpen={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>
   );

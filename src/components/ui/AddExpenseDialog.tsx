@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowDownRight, ArrowUpRight, ArrowRightLeft } from 'lucide-react';
 import { TransactionResponse, TransactionType, Category } from '../../types';
 import { transactionAPI, accountAPI, categoryAPI } from '../../services/api';
-import { Account } from '../../types/account';
+import { Account, accountTypeLabel } from '../../types/account';
 import { getErrorMessage } from '../../services/errorUtils';
 
 interface AddExpenseDialogProps {
@@ -391,7 +391,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
                           value={account.id}
                           className="bg-surface text-white"
                         >
-                          {account.name} ({account.accountType})
+                          {account.name} ({accountTypeLabel(account.accountType)})
                         </option>
                       ))}
                   </select>
@@ -422,7 +422,7 @@ const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({
                           value={account.id}
                           className="bg-surface text-white"
                         >
-                          {account.name} ({account.accountType})
+                          {account.name} ({accountTypeLabel(account.accountType)})
                         </option>
                       ))}
                   </select>

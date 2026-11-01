@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Button, Input, Select } from '../ui';
 import { TransactionRequest, TransactionResponse, Category } from '../../types';
-import { Account } from '../../types/account';
+import { Account, accountTypeLabel } from '../../types/account';
 
 type TransactionFormData = {
   amount: number;
@@ -334,7 +334,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             <option value="">Select Account</option>
             {activeAccounts.map((account) => (
               <option key={account.id} value={account.id}>
-                {account.name} ({account.accountType})
+                {account.name} ({accountTypeLabel(account.accountType)})
               </option>
             ))}
           </select>
@@ -396,7 +396,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               .filter((account) => account.id !== fromAccountId)
               .map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name} ({account.accountType})
+                  {account.name} ({accountTypeLabel(account.accountType)})
                 </option>
               ))}
           </select>

@@ -6,7 +6,7 @@ orbs:
 executors:
   node-executor:
     docker:
-      - image: cimg/node:18.20.4-browsers
+      - image: cimg/node:26.13.0-browsers
     environment:
       CI: true
 

@@ -25,9 +25,10 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+  // The application is dark-first; dark is the default theme.
   const [mode, setMode] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode;
-    return stored || 'light';
+    return stored || 'dark';
   });
 
   // Apply dark mode class to document
@@ -41,24 +42,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     localStorage.setItem(STORAGE_KEY, mode);
   }, [mode]);
 
-  // Check system preference on mount
+  // Keep the app dark-first: only honour a stored preference, otherwise dark.
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setMode(prefersDark ? 'dark' : 'light');
+      setMode('dark');
     }
-
-    // Listen for system preference changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        setMode(e.matches ? 'dark' : 'light');
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -75,12 +64,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       toggleTheme,
       setThemeMode,
     }),
-    [mode, toggleTheme, setThemeMode]
+    [mode, toggleTheme, setThemeMode],
   );
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

@@ -1,120 +1,144 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Bell, Receipt, TrendingUp, Wallet } from 'lucide-react';
+import { format } from 'date-fns/format';
+import PageHeader from '../components/ui/PageHeader';
+import StatCard from '../components/ui/StatCard';
+import DashboardCard from '../components/ui/DashboardCard';
+import EmptyState from '../components/ui/EmptyState';
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import { TrendingUp, TrendingDown, Target, Wallet } from 'lucide-react';
-import Header from '../components/ui/Header';
-import AnimatedAmount from '../components/ui/AnimatedAmount';
+  ChartCardSkeleton,
+  ListCardSkeleton,
+  StatCardSkeleton,
+  TableCardSkeleton,
+} from '../components/ui/Skeleton';
+import VolumeAreaChart from '../components/dashboard/VolumeAreaChart';
+import CategoryBreakdownChart from '../components/dashboard/CategoryBreakdownChart';
+import ResponseBarsChart from '../components/dashboard/ResponseBarsChart';
+import TrendLineChart from '../components/dashboard/TrendLineChart';
+import BudgetHealthList, { BudgetHealthItem } from '../components/dashboard/BudgetHealthList';
+import RecentRecordsTable, { RecentRecord } from '../components/dashboard/RecentRecordsTable';
+import ActivityFeed, { ActivityItem } from '../components/dashboard/ActivityFeed';
 import SetupWizard from '../components/setup/SetupWizard';
-import { analyticsAPI, accountAPI, categoryAPI, recurringTransactionAPI } from '../services/api';
-import { AnalyticsResponse } from '../types';
+import {
+  accountAPI,
+  alertAPI,
+  analyticsAPI,
+  budgetAPI,
+  categoryAPI,
+  recurringTransactionAPI,
+  transactionAPI,
+} from '../services/api';
+import { AlertResponse, AnalyticsResponse, BudgetResponse, TransactionResponse } from '../types';
 import { Account } from '../types/account';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getErrorMessage } from '../services/errorUtils';
 
-const getProgressColor = (pct: number) => {
-  if (pct > 90) return 'bg-neon-pink';
-  if (pct > 60) return 'bg-neon-purple';
-  return 'bg-neon-cyan';
+const MONTH_RANGES = [6, 12, 24];
+
+/** Compact, currency-agnostic axis label (e.g. 12k, 1.4L). */
+const compactNumber = (value: number): string => {
+  const abs = Math.abs(value);
+  if (abs >= 10_000_000) return `${(value / 10_000_000).toFixed(1)}Cr`;
+  if (abs >= 100_000) return `${(value / 100_000).toFixed(1)}L`;
+  if (abs >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+  return String(Math.round(value));
+};
+
+const computeDelta = (current: number, previous: number) => {
+  if (!Number.isFinite(previous) || previous === 0) return undefined;
+  const pct = ((current - previous) / Math.abs(previous)) * 100;
+  return {
+    value: `${Math.abs(pct).toFixed(1)}%`,
+    direction: (pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral') as 'up' | 'down' | 'neutral',
+    comparison: 'vs last month',
+  };
 };
 
 const Dashboard: React.FC = () => {
-  const { formatAmount, convertAmount, getSymbol } = useCurrency();
+  const { formatAmount, convertAmount } = useCurrency();
+
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [budgets, setBudgets] = useState<BudgetResponse[]>([]);
+  const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
+  const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rangeMonths, setRangeMonths] = useState(12);
   const [showSetup, setShowSetup] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
 
-  const fetchAnalytics = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const response = await analyticsAPI.getAnalytics();
-      if (response.data && response.data.data) {
-        setAnalytics(response.data.data);
-      } else {
-        setAnalytics(null);
-      }
-    } catch (err: any) {
-      setError(getErrorMessage(err, 'Failed to fetch analytics'));
+
+    const [analyticsRes, accountsRes, budgetsRes, txRes, alertsRes] = await Promise.allSettled([
+      analyticsAPI.getAnalytics(),
+      accountAPI.getAll(),
+      budgetAPI.getAll(0, 50),
+      transactionAPI.getAll(0, 8, 'createdAt,desc'),
+      alertAPI.getAll(0, 6),
+    ]);
+
+    if (analyticsRes.status === 'fulfilled') {
+      setAnalytics(analyticsRes.value.data?.data ?? null);
+    } else {
+      setError(getErrorMessage(analyticsRes.reason, 'Failed to load analytics'));
       setAnalytics(null);
     }
-  }, []);
 
-  const fetchAccounts = useCallback(async () => {
-    try {
-      const response = await accountAPI.getAll();
-      if (response.data && response.data.data) {
-        const data = response.data.data.content || response.data.data || [];
-        setAccounts(Array.isArray(data) ? data : []);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch accounts:', err);
-      setAccounts([]);
+    if (accountsRes.status === 'fulfilled') {
+      const data = accountsRes.value.data?.data?.content || accountsRes.value.data?.data || [];
+      setAccounts(Array.isArray(data) ? data : []);
     }
+
+    if (budgetsRes.status === 'fulfilled') {
+      setBudgets(budgetsRes.value.data?.data?.content || []);
+    }
+
+    if (txRes.status === 'fulfilled') {
+      setTransactions(txRes.value.data?.data?.content || []);
+    }
+
+    if (alertsRes.status === 'fulfilled') {
+      const data = alertsRes.value.data?.data?.content || alertsRes.value.data?.data || [];
+      setAlerts(Array.isArray(data) ? data : []);
+    }
+
+    setLoading(false);
   }, []);
 
-  // Check if user needs setup wizard
   const checkSetupStatus = useCallback(async () => {
+    const [accRes, catRes, recRes] = await Promise.allSettled([
+      accountAPI.getAll(0, 5),
+      categoryAPI.getAll(0, 5),
+      recurringTransactionAPI.getAll(0, 5),
+    ]);
+
+    const size = (result: PromiseSettledResult<{ data?: { data?: unknown } }>) => {
+      if (result.status !== 'fulfilled') return 0;
+      const body = result.value.data?.data as { content?: unknown[] } | unknown[] | undefined;
+      const content = (body as { content?: unknown[] })?.content ?? body;
+      return Array.isArray(content) ? content.length : 0;
+    };
+
     try {
-      // Check accounts
-      const accRes = await accountAPI.getAll(0, 5);
-      const accData = accRes.data?.data?.content || accRes.data?.data || [];
-      const hasAccounts = Array.isArray(accData) ? accData.length > 0 : false;
-
-      // Check user-specific categories
-      let hasCategories = false;
-      try {
-        const catRes = await categoryAPI.getAll(0, 5);
-        const catData = catRes.data?.data?.content || catRes.data?.data || [];
-        hasCategories = Array.isArray(catData) ? catData.length > 0 : false;
-      } catch {
-        // Categories endpoint might not be available
-      }
-
-      // Check recurring transactions
-      let hasRecurring = false;
-      try {
-        const recRes = await recurringTransactionAPI.getAll(0, 5);
-        const recData = recRes.data?.data?.content || recRes.data?.data || [];
-        hasRecurring = Array.isArray(recData) ? recData.length > 0 : false;
-      } catch {
-        // Recurring endpoint might not be available
-      }
-
-      // Show wizard only if ALL three (accounts, categories, recurring) are missing
-      // i.e. brand new user with no data at all
-      if (!hasAccounts && !hasCategories && !hasRecurring) {
-        setShowSetup(true);
-      }
-    } catch {
-      // If check fails, just show the normal dashboard
+      if (size(accRes) + size(catRes) + size(recRes) === 0) setShowSetup(true);
     } finally {
       setCheckingSetup(false);
     }
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchAnalytics(), fetchAccounts(), checkSetupStatus()]).finally(() =>
-      setLoading(false),
-    );
-  }, [fetchAnalytics, fetchAccounts, checkSetupStatus]);
+    fetchAll();
+    checkSetupStatus();
+  }, [fetchAll, checkSetupStatus]);
 
   const handleWizardComplete = () => {
     setShowSetup(false);
     localStorage.setItem('setupWizardDismissed', 'true');
-    // Refresh data
-    fetchAnalytics();
-    fetchAccounts();
+    fetchAll();
   };
 
   const handleWizardSkip = () => {
@@ -122,235 +146,331 @@ const Dashboard: React.FC = () => {
     localStorage.setItem('setupWizardDismissed', 'true');
   };
 
-  const totalIncome = analytics?.totalIncome || 0;
-  const totalExpenses = analytics?.totalExpenses || 0;
-  const netVelocity = analytics?.netBalance || 0;
-  const savingsTargetPct = totalIncome > 0 ? (netVelocity / totalIncome) * 100 : 0;
-  const monthlyData = (analytics?.monthlySpending || []).map((m) => ({
-    day: m.month,
-    spend: m.expenses,
+  const monthlySpending = analytics?.monthlySpending ?? [];
+  const totalIncome = analytics?.totalIncome ?? 0;
+  const totalExpenses = analytics?.totalExpenses ?? 0;
+  const netBalance = analytics?.netBalance ?? 0;
+  const savingsRate = totalIncome > 0 ? (netBalance / totalIncome) * 100 : 0;
+
+  const lastMonth = monthlySpending[monthlySpending.length - 1];
+  const prevMonth = monthlySpending[monthlySpending.length - 2];
+
+  const incomeDelta =
+    lastMonth && prevMonth ? computeDelta(lastMonth.income, prevMonth.income) : undefined;
+  const expenseDelta =
+    lastMonth && prevMonth ? computeDelta(lastMonth.expenses, prevMonth.expenses) : undefined;
+  const netDelta =
+    lastMonth && prevMonth ? computeDelta(lastMonth.balance, prevMonth.balance) : undefined;
+
+  const windowedMonths = monthlySpending.slice(-rangeMonths);
+
+  const volumeData = windowedMonths.map((m) => ({
+    date: m.month,
+    value: convertAmount(m.expenses),
   }));
-  const spendingByCategory = analytics?.spendingByCategory || [];
-  const activeAccounts = accounts.filter((a) => a.isActive !== false);
+
+  const barsData = windowedMonths.map((m) => ({
+    date: m.month,
+    Income: convertAmount(m.income),
+    Expenses: convertAmount(m.expenses),
+  }));
+
+  const trendData = windowedMonths.map((m) => ({
+    date: m.month,
+    value: convertAmount(m.balance),
+  }));
+
+  const breakdownItems = (analytics?.spendingByCategory ?? [])
+    .slice()
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+    .map((item) => ({
+      label: item.categoryName,
+      value: convertAmount(item.totalAmount),
+      percentage: item.percentage,
+    }));
+
+  const budgetItems: BudgetHealthItem[] = budgets.map((budget) => ({
+    id: budget.id,
+    name: budget.name,
+    spent: convertAmount(budget.currentSpent),
+    limit: convertAmount(budget.limitAmount),
+    percentage: budget.spentPercentage,
+    isOver: budget.isOverBudget,
+  }));
+
+  const recentRecords: RecentRecord[] = transactions.map((tx) => ({
+    id: tx.id,
+    primaryLabel: tx.description || tx.category?.name || 'Transaction',
+    secondaryLabel: tx.category?.name || '—',
+    category: tx.type,
+    timeMetric: format(new Date(tx.transactionDate), 'MMM d'),
+    status: tx.type === 'INCOME' ? 'Income' : tx.type === 'TRANSFER' ? 'Transfer' : 'Expense',
+    statusTone: tx.type === 'INCOME' ? 'success' : tx.type === 'TRANSFER' ? 'info' : 'neutral',
+  }));
+
+  const activityItems: ActivityItem[] = [
+    ...transactions.map((tx) => ({
+      id: `tx-${tx.id}`,
+      message:
+        tx.type === 'INCOME'
+          ? `Income of ${formatAmount(convertAmount(tx.amount))} recorded`
+          : tx.type === 'TRANSFER'
+            ? `Transfer of ${formatAmount(convertAmount(tx.amount))} completed`
+            : `Expense of ${formatAmount(convertAmount(tx.amount))} recorded`,
+      timestamp: tx.createdAt,
+      icon: <Receipt className="h-3.5 w-3.5" />,
+    })),
+    ...alerts.map((alert) => ({
+      id: `alert-${alert.id}`,
+      message: alert.message,
+      timestamp: alert.createdAt,
+      icon: <Bell className="h-3.5 w-3.5" />,
+    })),
+  ];
+
+  const activeAccounts = accounts.filter((account) => account.isActive !== false);
 
   return (
-    <div>
-      <Header title="System Liquidity" subtitle="Fiscal Epoch: May 20, 2026" />
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={['Overview']}
+        title="Dashboard"
+        description="Income, spending and budget health at a glance."
+        actions={
+          <>
+            <label className="sr-only" htmlFor="dashboard-range">
+              Time range
+            </label>
+            <select
+              id="dashboard-range"
+              value={rangeMonths}
+              onChange={(event) => setRangeMonths(Number(event.target.value))}
+              className="h-9 rounded-lg border border-border bg-card px-2.5 text-xs text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            >
+              {MONTH_RANGES.map((months) => (
+                <option key={months} value={months}>
+                  Last {months} months
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={fetchAll}
+              className="btn-secondary h-9 gap-1.5 px-3 text-xs"
+            >
+              <TrendingUp className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+          </>
+        }
+      />
 
       {error && (
-        <div className="mb-6 bg-neon-pink/10 border border-neon-pink/20 text-neon-pink px-4 py-3 rounded-2xl text-sm">
-          {error}
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
+        >
+          <span>{error}</span>
+          <button type="button" onClick={fetchAll} className="btn-danger h-8 px-3 text-xs">
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Setup Wizard for new users */}
       {showSetup && !checkingSetup && (
         <SetupWizard onComplete={handleWizardComplete} onSkip={handleWizardSkip} />
       )}
 
       {loading && !analytics ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neon-cyan" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ChartCardSkeleton className="lg:col-span-2" />
+            <ChartCardSkeleton />
+            <ChartCardSkeleton />
+            <ChartCardSkeleton />
+            <ListCardSkeleton />
+            <TableCardSkeleton className="lg:col-span-2" />
+            <ListCardSkeleton />
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-12 gap-6 lg:gap-8">
-          {/* Hero: Net Velocity */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05, duration: 0.4 }}
-            className="col-span-12 lg:col-span-8 card p-8 animate-glow relative overflow-hidden"
-          >
-            <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-neon-cyan/10 blur-[80px] pointer-events-none" />
-            <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-2">
-              TOTAL NET VELOCITY
-            </p>
-            <AnimatedAmount value={netVelocity} className="text-4xl sm:text-5xl" />
-            <div className="mt-6 h-36">
-              {monthlyData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyData}>
-                    <defs>
-                      <linearGradient id="cyanGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="60%" stopColor="#00f5ff" stopOpacity={0.6} />
-                        <stop offset="100%" stopColor="#00f5ff" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: '#0f0f12',
-                        border: '1px solid rgba(0,245,255,0.3)',
-                        borderRadius: '12px',
-                        color: '#fff',
-                      }}
-                      formatter={(value) => [`${getSymbol()}${Number(value).toFixed(2)}`, 'Spend']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="spend"
-                      stroke="#00f5ff"
-                      strokeWidth={2}
-                      fill="url(#cyanGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-white/20 text-sm">
-                  No data
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* 3 Stat Cards Stack */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="card p-6 border-l-4 border-l-neon-cyan flex-1"
-            >
-              <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-1">
-                Inflow
-              </p>
-              <AnimatedAmount value={totalIncome} className="text-4xl sm:text-5xl text-neon-cyan" />
-              <div className="mt-2 flex items-center gap-1 text-xs text-white/40">
-                <TrendingUp className="w-3 h-3 text-neon-cyan" />
-                <span className="text-neon-cyan">Income</span>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="card p-6 border-l-4 border-l-neon-pink flex-1"
-            >
-              <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-1">Burn</p>
-              <AnimatedAmount
-                value={-totalExpenses}
-                className="text-4xl sm:text-5xl text-neon-pink"
-              />
-              <div className="mt-2 flex items-center gap-1 text-xs text-white/40">
-                <TrendingDown className="w-3 h-3 text-neon-pink" />
-                <span className="text-neon-pink">Expenses</span>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="card p-6 border-l-4 border-l-neon-purple flex-1"
-            >
-              <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-1">
-                Savings Target
-              </p>
-              <span className="font-display font-bold text-4xl sm:text-5xl text-neon-purple">
-                {savingsTargetPct.toFixed(1)}%
-              </span>
-              <div className="mt-2 flex items-center gap-1 text-xs text-white/40">
-                <Target className="w-3 h-3 text-neon-purple" />
-                <span className="text-neon-purple">of total inflow</span>
-              </div>
-            </motion.div>
+        <>
+          {/* KPI row */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Total income"
+              value={formatAmount(convertAmount(totalIncome))}
+              delta={incomeDelta}
+              icon={<TrendingUp className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Total expenses"
+              value={formatAmount(convertAmount(totalExpenses))}
+              delta={expenseDelta ? { ...expenseDelta, invert: true } : undefined}
+              icon={<Receipt className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Net balance"
+              value={formatAmount(convertAmount(netBalance))}
+              delta={netDelta}
+              icon={<Wallet className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Savings rate"
+              value={`${savingsRate.toFixed(1)}%`}
+              delta={netDelta}
+              icon={<TrendingUp className="h-4 w-4" />}
+            />
           </div>
 
-          {/* Account Balances */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="col-span-12 lg:col-span-7 card p-8"
-          >
-            <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-4">
-              Account Balances
-            </p>
-            {activeAccounts.length === 0 ? (
-              <p className="text-white/20 text-sm text-center py-4">No accounts found</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {activeAccounts.map((acc) => (
-                  <div
-                    key={acc.id}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-neon-cyan/10">
-                        <Wallet className="w-4 h-4 text-neon-cyan" />
-                      </div>
-                      <p className="text-sm text-white/80 truncate">{acc.name}</p>
-                    </div>
-                    <span
-                      className={`font-display font-bold text-sm ${acc.currentBalance >= 0 ? 'text-neon-cyan' : 'text-neon-pink'}`}
-                    >
-                      {formatAmount(convertAmount(acc.currentBalance))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
+          {/* Analytics grid */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <DashboardCard
+              title="Spending volume"
+              description={`Expenses recorded per month, last ${rangeMonths} months.`}
+              className="lg:col-span-2"
+            >
+              {volumeData.length > 0 ? (
+                <VolumeAreaChart
+                  data={volumeData}
+                  valueFormatter={(value) => formatAmount(value)}
+                  yTickFormatter={compactNumber}
+                />
+              ) : (
+                <EmptyState
+                  title="No spending recorded"
+                  description="Monthly expenses will appear here once you add transactions."
+                />
+              )}
+            </DashboardCard>
 
-          {/* Allocation Matrix */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="col-span-12 lg:col-span-5 card p-8"
-          >
-            <p className="text-white/40 text-xs uppercase tracking-widest font-bold mb-6">
-              Category Split
-            </p>
-            {spendingByCategory.length === 0 ? (
-              <p className="text-white/20 text-sm text-center py-4">No spending data</p>
-            ) : (
-              <div className="space-y-4">
-                {spendingByCategory.map((item) => {
-                  const pct = Math.min(item.percentage, 100);
-                  return (
-                    <div key={item.categoryName}>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-sm text-white/80">{item.categoryName}</span>
-                        <span className="text-xs text-white/40 font-display font-bold">
-                          {formatAmount(convertAmount(item.totalAmount))}
-                        </span>
-                      </div>
-                      <div className="progress-bar">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                          className={`progress-bar-fill ${getProgressColor(pct)}`}
-                          style={{
-                            boxShadow:
-                              pct > 90
-                                ? '0 0 10px rgba(255,0,122,0.6)'
-                                : pct > 60
-                                  ? '0 0 10px rgba(157,0,255,0.6)'
-                                  : '0 0 10px rgba(0,245,255,0.4)',
-                          }}
-                        />
-                      </div>
+            <DashboardCard title="Spending by category" description="Share of total expenses.">
+              {breakdownItems.length > 0 ? (
+                <CategoryBreakdownChart
+                  items={breakdownItems}
+                  valueFormatter={(value) => formatAmount(value)}
+                />
+              ) : (
+                <EmptyState
+                  title="No categories yet"
+                  description="Categorise transactions to see the split."
+                />
+              )}
+            </DashboardCard>
+
+            <DashboardCard title="Income vs expenses" description="Monthly totals side by side.">
+              {barsData.length > 0 ? (
+                <ResponseBarsChart
+                  data={barsData}
+                  series={[
+                    { key: 'Income', label: 'Income' },
+                    { key: 'Expenses', label: 'Expenses' },
+                  ]}
+                  valueFormatter={compactNumber}
+                />
+              ) : (
+                <EmptyState
+                  title="No monthly data"
+                  description="Add transactions to compare income and expenses."
+                />
+              )}
+            </DashboardCard>
+
+            <DashboardCard title="Net flow trend" description="Monthly income minus expenses.">
+              {trendData.length > 0 ? (
+                <TrendLineChart
+                  data={trendData}
+                  showLabels={trendData.length <= 12}
+                  valueFormatter={compactNumber}
+                />
+              ) : (
+                <EmptyState
+                  title="No trend yet"
+                  description="Net flow appears after your first month of activity."
+                />
+              )}
+            </DashboardCard>
+
+            <DashboardCard title="Budget health" description="Utilisation of active budgets.">
+              {budgetItems.length > 0 ? (
+                <BudgetHealthList items={budgetItems} formatAmount={formatAmount} />
+              ) : (
+                <EmptyState
+                  title="No budgets set"
+                  description="Create a budget to track utilisation."
+                />
+              )}
+            </DashboardCard>
+
+            <DashboardCard
+              title="Recent transactions"
+              description="Latest activity from your ledger."
+              className="lg:col-span-2"
+              action={
+                <Link
+                  to="/transactions"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  View all
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              }
+            >
+              {recentRecords.length > 0 ? (
+                <RecentRecordsTable records={recentRecords} />
+              ) : (
+                <EmptyState
+                  title="No transactions yet"
+                  description="Your most recent records will appear here."
+                />
+              )}
+            </DashboardCard>
+
+            <DashboardCard title="Activity" description="Latest ledger and alert events.">
+              {activityItems.length > 0 ? (
+                <ActivityFeed items={activityItems} max={6} />
+              ) : (
+                <EmptyState
+                  title="No activity yet"
+                  description="Ledger events will appear here as you use the app."
+                />
+              )}
+            </DashboardCard>
+
+            <DashboardCard
+              title="Account balances"
+              description="Active accounts and their current balances."
+              className="lg:col-span-3"
+            >
+              {activeAccounts.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {activeAccounts.slice(0, 8).map((account) => (
+                    <div
+                      key={account.id}
+                      className="rounded-lg border border-border bg-white/[0.02] p-3"
+                    >
+                      <p className="truncate text-xs text-muted-foreground">{account.name}</p>
+                      <p className="mt-1.5 text-sm font-semibold tabular-nums text-foreground">
+                        {formatAmount(convertAmount(account.currentBalance))}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
-        </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="No accounts yet"
+                  description="Add an account to see balances here."
+                />
+              )}
+            </DashboardCard>
+          </div>
+        </>
       )}
     </div>
   );

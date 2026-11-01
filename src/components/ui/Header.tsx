@@ -6,26 +6,23 @@ interface HeaderProps {
   action?: React.ReactNode;
 }
 
+/**
+ * Shared page header used across the app screens. Renders a quiet, dark-first
+ * title block (title + one-line muted description) with right-aligned actions.
+ * The dashboard uses the richer <PageHeader /> component instead.
+ */
 const Header: React.FC<HeaderProps> = ({ title, subtitle, action }) => {
-  // Make last word cyan
-  const words = title.split(' ');
-  const lastWord = words.pop();
-  const start = words.join(' ');
-
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 sm:mb-12">
-      <div>
-        <h1 className="font-display text-3xl sm:text-4xl font-light tracking-tight">
-          {start} <span className="text-neon-cyan font-bold">{lastWord}</span>
-        </h1>
-        <p className="text-white/40 text-xs uppercase tracking-wide font-medium mt-1">{subtitle}</p>
+    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
       </div>
-      <div className="flex items-center gap-3">
-        {/* Real-time Sync pill */}
-        <div className="px-4 py-2 rounded-full glass-panel text-xs text-white/40 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
-          Real-time Sync
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+          Live sync
+        </span>
         {action}
       </div>
     </div>

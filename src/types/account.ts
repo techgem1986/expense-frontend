@@ -22,6 +22,15 @@ export const AccountTypeDisplayNames: Record<AccountTypeEnum, string> = {
 };
 
 /**
+ * Human readable label for an account type value coming from the API.
+ * Tolerates both the wire format (e.g. "SALARY") and a display name (e.g. "Salary").
+ */
+export const accountTypeLabel = (value?: string): string => {
+  if (!value) return '';
+  return (AccountTypeDisplayNames as Record<string, string>)[value] ?? value;
+};
+
+/**
  * Account interface representing a user's financial account.
  */
 export interface Account {

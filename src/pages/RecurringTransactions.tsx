@@ -9,7 +9,7 @@ import {
   Category,
   TransactionType,
 } from '../types';
-import { AccountSummary } from '../types/account';
+import { AccountSummary, accountTypeLabel } from '../types/account';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getErrorMessage } from '../services/errorUtils';
 
@@ -356,7 +356,7 @@ const RecurringTransactions: React.FC = () => {
                       .filter((acc) => acc.id !== formToAccountId)
                       .map((acc) => (
                         <option key={acc.id} value={acc.id} className="bg-surface">
-                          {acc.name} ({acc.accountType})
+                          {acc.name} ({accountTypeLabel(acc.accountType)})
                         </option>
                       ))}
                   </select>
@@ -403,7 +403,7 @@ const RecurringTransactions: React.FC = () => {
                       .filter((acc) => acc.id !== formFromAccountId)
                       .map((acc) => (
                         <option key={acc.id} value={acc.id} className="bg-surface">
-                          {acc.name} ({acc.accountType})
+                          {acc.name} ({accountTypeLabel(acc.accountType)})
                         </option>
                       ))}
                   </select>

@@ -9,7 +9,7 @@ import {
   Category,
   Frequency,
 } from '../../types';
-import { AccountSummary } from '../../types/account';
+import { AccountSummary, accountTypeLabel } from '../../types/account';
 
 type RecurringFormData = {
   name: string;
@@ -395,7 +395,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
                 .filter((account) => account.id !== toAccountId)
                 .map((account) => (
                   <option key={account.id} value={account.id}>
-                    {account.name} ({account.accountType})
+                    {account.name} ({accountTypeLabel(account.accountType)})
                   </option>
                 ))}
           </select>
@@ -443,7 +443,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
                 .filter((account) => account.id !== fromAccountId)
                 .map((account) => (
                   <option key={account.id} value={account.id}>
-                    {account.name} ({account.accountType})
+                    {account.name} ({accountTypeLabel(account.accountType)})
                   </option>
                 ))}
           </select>

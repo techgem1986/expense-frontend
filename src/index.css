@@ -1,28 +1,33 @@
+/* Fonts must be imported before any other statements. */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import Space Grotesk and Inter fonts */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Inter:wght@400;500;600&display=swap');
-
-/* Base styles */
+/* ---------------------------------------------------------------------------
+   Base — dark-first, near-black canvas, high-contrast neutral text
+   --------------------------------------------------------------------------- */
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
   html {
     @apply scroll-smooth;
   }
 
   body {
-    background: #050505;
-    color: #ffffff;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar — quiet, neutral */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
@@ -31,89 +36,164 @@
 
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 8px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 245, 255, 0.3);
+    background: rgba(255, 255, 255, 0.16);
+    background-clip: content-box;
   }
 
   ::selection {
-    background: #00f5ff;
-    color: #000;
+    background: #fafafa;
+    color: #0a0a0a;
+  }
+
+  /* Visible, accessible focus ring for keyboard users */
+  :focus-visible {
+    outline: 2px solid rgba(250, 250, 250, 0.7);
+    outline-offset: 2px;
   }
 }
 
-/* Component styles */
+/* ---------------------------------------------------------------------------
+   Components — flat bordered surfaces, no heavy elevation
+   --------------------------------------------------------------------------- */
 @layer components {
+  /* Flat bordered surface (kept for compatibility with older screens) */
   .glass-panel {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
+    background: #111111;
+    border: 1px solid #242424;
   }
 
   .card {
-    @apply glass-panel rounded-3xl;
+    @apply glass-panel rounded-xl;
   }
 
   .card-hover {
-    @apply transition-all duration-200 hover:bg-white/[0.06];
+    @apply transition-colors duration-150 hover:bg-white/[0.04];
   }
 
+  /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center text-sm font-medium transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center text-sm font-medium rounded-lg
+      transition-colors duration-150 focus:outline-none focus-visible:ring-2
+      focus-visible:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
-    @apply btn bg-neon-cyan text-black font-bold rounded-xl hover:scale-105;
+    @apply btn bg-foreground text-background font-semibold hover:bg-white/90;
   }
 
   .btn-secondary {
-    @apply btn glass-panel rounded-xl text-white/60 hover:text-white/80;
+    @apply btn border border-border bg-card text-muted-foreground hover:bg-white/[0.04] hover:text-foreground;
+  }
+
+  .btn-ghost {
+    @apply btn text-muted-foreground hover:bg-white/[0.04] hover:text-foreground;
   }
 
   .btn-danger {
-    @apply btn bg-neon-pink/20 text-neon-pink font-bold rounded-xl hover:scale-105;
+    @apply btn bg-danger/15 text-danger hover:bg-danger/25;
   }
 
+  /* Form controls */
   .input {
-    @apply w-full px-4 py-3 text-sm bg-white/5 border border-white/10 rounded-2xl placeholder-white/40 text-white focus:outline-none focus:border-neon-cyan/50 transition-all duration-200;
+    @apply w-full px-3 py-2 text-sm bg-card border border-border rounded-lg
+      text-foreground placeholder-muted-foreground/60
+      focus:outline-none focus:border-white/30
+      transition-colors duration-150;
   }
 
   .input-label {
-    @apply block text-xs uppercase tracking-widest font-bold text-white/40 mb-2;
+    @apply block text-xs font-medium text-muted-foreground mb-1.5;
   }
 
+  /* Badges */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+      border border-transparent;
   }
 
   .badge-cyan {
-    @apply badge bg-neon-cyan/10 text-neon-cyan;
+    @apply badge bg-white/10 text-foreground border-white/10;
   }
 
   .badge-purple {
-    @apply badge bg-neon-purple/10 text-neon-purple;
+    @apply badge bg-white/[0.06] text-muted-foreground border-white/10;
   }
 
   .badge-pink {
-    @apply badge bg-neon-pink/10 text-neon-pink;
+    @apply badge bg-danger/10 text-danger border-danger/20;
   }
 
-  /* Neon progress bar */
+  .badge-success {
+    @apply badge bg-success/10 text-success border-success/20;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning/10 text-warning border-warning/20;
+  }
+
+  .badge-neutral {
+    @apply badge bg-white/[0.06] text-muted-foreground border-white/10;
+  }
+
+  /* Progress bars */
   .progress-bar {
-    @apply h-2 rounded-full bg-white/5 overflow-hidden;
+    @apply h-1.5 rounded-full bg-white/[0.06] overflow-hidden;
   }
 
   .progress-bar-fill {
-    @apply h-full rounded-full transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)];
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+
+  /* Sidebar navigation item */
+  .nav-item {
+    @apply relative flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium
+      text-muted-foreground transition-colors duration-150
+      hover:bg-white/[0.04] hover:text-foreground;
+  }
+
+  .nav-item-active {
+    @apply bg-white/[0.06] text-foreground;
+  }
+
+  .nav-section-label {
+    @apply px-3 pt-5 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70;
+  }
+
+  /* Card typography helpers */
+  .card-title {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  .card-desc {
+    @apply mt-1 text-xs text-muted-foreground;
+  }
+
+  .kpi-value {
+    @apply text-2xl font-semibold tracking-tight text-foreground tabular-nums;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply rounded-md bg-white/[0.06] animate-shimmer;
   }
 }
 
-/* Utility styles */
+/* ---------------------------------------------------------------------------
+   Utilities
+   --------------------------------------------------------------------------- */
 @layer utilities {
   .font-display {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .font-brand {
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
   }
 
   .text-balance {
@@ -121,39 +201,24 @@
   }
 }
 
-/* Keyframe animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 15px rgba(0, 245, 255, 0.18); }
-  50% { box-shadow: 0 0 40px rgba(0, 245, 255, 0.4); }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-glow {
-  animation: pulse-glow 4s ease-in-out infinite;
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  width: 6px;
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 245, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 245, 255, 0.4);
 }
