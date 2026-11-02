@@ -155,7 +155,10 @@ const RecurringTransactionList: React.FC = () => {
     if (recurringItem.toAccount) {
       parts.push(recurringItem.toAccount.name);
     }
-    return parts.join(' | ');
+    const isTransfer =
+      recurringItem.type === 'TRANSFER' ||
+      recurringItem.category?.name?.toLowerCase() === 'money transfer';
+    return parts.join(isTransfer ? ' → ' : ' | ');
   };
 
   const formatDate = (dateString: string): string => {
@@ -224,7 +227,16 @@ const RecurringTransactionList: React.FC = () => {
             ) : (
               recurring.map((rec) => (
                 <Table.Row key={rec.id}>
-                  <Table.BodyCell className="font-medium">{rec.name}</Table.BodyCell>
+                  <Table.BodyCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{rec.name}</span>
+                      {rec.type === 'TRANSFER' && (
+                        <Badge variant="info" size="sm">
+                          Transfer
+                        </Badge>
+                      )}
+                    </div>
+                  </Table.BodyCell>
                   <Table.BodyCell>
                     <Badge variant="neutral">{getCategoryName(rec)}</Badge>
                   </Table.BodyCell>

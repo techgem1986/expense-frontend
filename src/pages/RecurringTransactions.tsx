@@ -97,8 +97,29 @@ const RecurringTransactions: React.FC = () => {
   }, [formCategoryId, moneyTransferCategoryId]);
 
   // Determine which account fields to show
-  const showFromAccount = formType === 'EXPENSE' || isMoneyTransferCategory;
-  const showToAccount = formType === 'INCOME' || isMoneyTransferCategory;
+  const isTransferType = formType === 'TRANSFER';
+  const showFromAccount = formType === 'EXPENSE' || isTransferType || isMoneyTransferCategory;
+  const showToAccount = formType === 'INCOME' || isTransferType || isMoneyTransferCategory;
+
+  // When type is TRANSFER, auto-select the "Money Transfer" category if it exists
+  useEffect(() => {
+    if (isTransferType) {
+      setFormCategoryId(moneyTransferCategoryId ?? undefined);
+    }
+  }, [isTransferType, moneyTransferCategoryId]);
+
+  // Auto-generate a description for transfers once both accounts are selected
+  useEffect(() => {
+    if (!isTransferType || !formFromAccountId || !formToAccountId) return;
+    const from = accounts.find((a) => a.id === formFromAccountId);
+    const to = accounts.find((a) => a.id === formToAccountId);
+    if (from && to) {
+      const generated = `Self Transfer from ${from.name} to ${to.name}`;
+      setFormDescription((prev) =>
+        !prev || prev.startsWith('Self Transfer from') ? generated : prev,
+      );
+    }
+  }, [isTransferType, formFromAccountId, formToAccountId, accounts]);
 
   // Same account validation
   const accountError = useMemo(() => {
@@ -268,40 +289,47 @@ const RecurringTransactions: React.FC = () => {
                   autoFocus
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="input-label">Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formAmount}
-                    onChange={(e) => setFormAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="input-label">Type</label>
-                  <div className="flex p-1 bg-white/5 rounded-full mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormType('EXPENSE')}
-                      className={`flex-1 py-1.5 px-2 rounded-full text-xs font-medium transition-all ${
-                        formType === 'EXPENSE' ? 'bg-neon-pink/20 text-neon-pink' : 'text-white/40'
-                      }`}
-                    >
-                      Expense
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormType('INCOME')}
-                      className={`flex-1 py-1.5 px-2 rounded-full text-xs font-medium transition-all ${
-                        formType === 'INCOME' ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-white/40'
-                      }`}
-                    >
-                      Income
-                    </button>
-                  </div>
+              <div>
+                <label className="input-label">Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formAmount}
+                  onChange={(e) => setFormAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="input-label">Type</label>
+                <div className="flex p-1.5 bg-white/5 rounded-full">
+                  <button
+                    type="button"
+                    onClick={() => setFormType('EXPENSE')}
+                    className={`flex-1 whitespace-nowrap py-2 px-3 rounded-full text-xs font-medium transition-all ${
+                      formType === 'EXPENSE' ? 'bg-neon-pink/20 text-neon-pink' : 'text-white/40'
+                    }`}
+                  >
+                    Expense
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormType('INCOME')}
+                    className={`flex-1 whitespace-nowrap py-2 px-3 rounded-full text-xs font-medium transition-all ${
+                      formType === 'INCOME' ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-white/40'
+                    }`}
+                  >
+                    Income
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormType('TRANSFER')}
+                    className={`flex-1 whitespace-nowrap py-2 px-3 rounded-full text-xs font-medium transition-all ${
+                      formType === 'TRANSFER' ? 'bg-white/20 text-white' : 'text-white/40'
+                    }`}
+                  >
+                    Transfer
+                  </button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -336,7 +364,7 @@ const RecurringTransactions: React.FC = () => {
                 </div>
               </div>
 
-              {/* From Account - shown for EXPENSE or Self Transfer */}
+              {/* From Account - shown for EXPENSE / TRANSFER or Self Transfer */}
               {showFromAccount && (
                 <div>
                   <label className="input-label">
@@ -363,27 +391,30 @@ const RecurringTransactions: React.FC = () => {
                 </div>
               )}
 
-              <div>
-                <label className="input-label">Category</label>
-                <select
-                  value={formCategoryId || ''}
-                  onChange={(e) =>
-                    setFormCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
-                  }
-                  className="input"
-                >
-                  <option value="" className="bg-surface">
-                    No category
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-surface">
-                      {c.name}
+              {/* Category - hidden for Transfer type (transfers are not categorised) */}
+              {!isTransferType && (
+                <div>
+                  <label className="input-label">Category</label>
+                  <select
+                    value={formCategoryId || ''}
+                    onChange={(e) =>
+                      setFormCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
+                    }
+                    className="input"
+                  >
+                    <option value="" className="bg-surface">
+                      No category
                     </option>
-                  ))}
-                </select>
-              </div>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id} className="bg-surface">
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* To Account - shown for INCOME or Self Transfer */}
+              {/* To Account - shown for INCOME / TRANSFER or Self Transfer */}
               {showToAccount && (
                 <div>
                   <label className="input-label">

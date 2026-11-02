@@ -57,7 +57,8 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
   // Rules:
   //   • Income        → To Account is mandatory
   //   • Expense       → From Account is mandatory
-  //   • Self Transfer → Both From Account and To Account are mandatory
+  //   • Transfer      → Both From Account and To Account are mandatory
+  //   • Self Transfer → Both From Account and To Account are mandatory (legacy Money Transfer category)
   const validationSchema = useMemo(
     () =>
       yup.object().shape({
@@ -67,7 +68,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
           .typeError('Amount must be a number')
           .positive('Amount must be positive')
           .required('Amount is required'),
-        type: yup.string().required('Type is required').oneOf(['INCOME', 'EXPENSE']),
+        type: yup.string().required('Type is required').oneOf(['INCOME', 'EXPENSE', 'TRANSFER']),
         description: yup.string(),
         frequency: yup.string().required('Frequency is required'),
         dayOfMonth: yup
@@ -84,12 +85,13 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
           .test('from-account-required', 'From Account is required', function (value) {
             const { type, categoryId } = this.parent;
             const isExpense = type === 'EXPENSE';
+            const isTransferType = type === 'TRANSFER';
             const isTransfer =
               moneyTransferCategoryId !== undefined &&
               categoryId != null &&
               categoryId !== '' &&
               Number(categoryId) === moneyTransferCategoryId;
-            if (isExpense || isTransfer) {
+            if (isExpense || isTransferType || isTransfer) {
               return value != null && Number(value) > 0;
             }
             return true;
@@ -99,12 +101,13 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
           .test('to-account-required', 'To Account is required', function (value) {
             const { type, categoryId } = this.parent;
             const isIncome = type === 'INCOME';
+            const isTransferType = type === 'TRANSFER';
             const isTransfer =
               moneyTransferCategoryId !== undefined &&
               categoryId != null &&
               categoryId !== '' &&
               Number(categoryId) === moneyTransferCategoryId;
-            if (isIncome || isTransfer) {
+            if (isIncome || isTransferType || isTransfer) {
               return value != null && Number(value) > 0;
             }
             return true;
@@ -151,8 +154,10 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
   }, [watchedCategoryIdRaw, moneyTransferCategoryId]);
 
   // Determine which account fields to show
-  const showFromAccount = selectedType === 'EXPENSE' || isMoneyTransferCategory;
-  const showToAccountComputed = selectedType === 'INCOME' || isMoneyTransferCategory;
+  const isTransferType = selectedType === 'TRANSFER';
+  const showFromAccount = selectedType === 'EXPENSE' || isTransferType || isMoneyTransferCategory;
+  const showToAccountComputed =
+    selectedType === 'INCOME' || isTransferType || isMoneyTransferCategory;
 
   // Show To Account for INCOME transactions or when Money Transfer category is selected
   useEffect(() => {
@@ -173,10 +178,17 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
     }
   }, [showFromAccount, setValue]);
 
-  // Auto-generate description for Self Transfer when Money Transfer category is selected
-  // and both accounts are set
+  // When the type is TRANSFER, auto-assign the "Money Transfer" category (if available)
   useEffect(() => {
-    if (!isMoneyTransferCategory || !fromAccountId || !toAccountId) return;
+    if (isTransferType) {
+      setValue('categoryId', moneyTransferCategoryId ?? undefined);
+    }
+  }, [isTransferType, moneyTransferCategoryId, setValue]);
+
+  // Auto-generate description for a Transfer when both accounts are set
+  // (applies to the TRANSFER type and to the legacy Money Transfer category)
+  useEffect(() => {
+    if ((!isMoneyTransferCategory && !isTransferType) || !fromAccountId || !toAccountId) return;
     const currentDesc = watch('description');
     const fromAccount = accounts.find((a) => a.id === fromAccountId);
     const toAccount = accounts.find((a) => a.id === toAccountId);
@@ -186,7 +198,15 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
         setValue('description', generatedDesc);
       }
     }
-  }, [isMoneyTransferCategory, fromAccountId, toAccountId, accounts, setValue, watch]);
+  }, [
+    isMoneyTransferCategory,
+    isTransferType,
+    fromAccountId,
+    toAccountId,
+    accounts,
+    setValue,
+    watch,
+  ]);
 
   // Validate that From and To accounts are different when both are shown
   useEffect(() => {
@@ -202,7 +222,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
     if (recurring) {
       setValue('name', recurring.name);
       setValue('amount', recurring.amount);
-      // For existing Money Transfer (detected by accounts), keep the type as EXPENSE
+      // Restore the saved type (INCOME / EXPENSE / TRANSFER)
       setValue('type', recurring.type);
       setValue('description', recurring.description || '');
       setValue('frequency', recurring.frequency);
@@ -235,20 +255,20 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
       return;
     }
 
-    // Additional validation for self-transfer (Money Transfer category)
+    // Additional validation for transfers (TRANSFER type or Money Transfer category)
     // Safety net — yup schema should already enforce this
-    if (isMoneyTransferCategory) {
+    if (isMoneyTransferCategory || data.type === 'TRANSFER') {
       if (!data.fromAccountId) {
-        setError('fromAccountId', { message: 'From Account is required for self transfer' });
+        setError('fromAccountId', { message: 'From Account is required for a transfer' });
         return;
       }
       if (!data.toAccountId) {
-        setError('toAccountId', { message: 'To Account is required for self transfer' });
+        setError('toAccountId', { message: 'To Account is required for a transfer' });
         return;
       }
     }
 
-    const backendType = data.type as 'INCOME' | 'EXPENSE';
+    const backendType = data.type as 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
     // Convert categoryId to number
     let categoryIdNum: number | undefined = undefined;
@@ -286,6 +306,9 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
   const filteredCategories = useMemo(() => {
     if (selectedType === 'INCOME') {
       return categories.filter((cat) => cat.type === 'INCOME');
+    } else if (selectedType === 'TRANSFER') {
+      // Transfers are not tied to a user category
+      return [];
     } else {
       return categories.filter((cat) => cat.type === 'EXPENSE');
     }
@@ -297,12 +320,12 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
 
     const isExpense = selectedType === 'EXPENSE';
     const isIncome = selectedType === 'INCOME';
-    const isTransfer = isMoneyTransferCategory;
+    const isTransfer = isMoneyTransferCategory || selectedType === 'TRANSFER';
 
-    // From Account required for Expense or Self Transfer
+    // From Account required for Expense or Transfer
     if ((isExpense || isTransfer) && !fromAccountId) return false;
 
-    // To Account required for Income or Self Transfer
+    // To Account required for Income or Transfer
     if ((isIncome || isTransfer) && !toAccountId) return false;
 
     return true;
@@ -322,6 +345,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
         options={[
           { value: 'INCOME', label: 'Income' },
           { value: 'EXPENSE', label: 'Expense' },
+          { value: 'TRANSFER', label: 'Transfer' },
         ]}
         defaultValue="EXPENSE"
         error={errors.type?.message}
@@ -375,7 +399,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
         {...register('endDate')}
       />
 
-      {/* From Account - shown for EXPENSE transactions or when Money Transfer is selected */}
+      {/* From Account - shown for EXPENSE / TRANSFER transactions or when Money Transfer is selected */}
       {showFromAccount && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -405,25 +429,27 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({
         </div>
       )}
 
-      {/* Category Selection */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Category
-        </label>
-        <select
-          {...register('categoryId')}
-          className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
-        >
-          <option value="">None</option>
-          {filteredCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Category Selection - hidden for Transfer type (transfers are not categorised) */}
+      {!isTransferType && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Category
+          </label>
+          <select
+            {...register('categoryId')}
+            className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+          >
+            <option value="">None</option>
+            {filteredCategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-      {/* To Account - shown for INCOME transactions or when Money Transfer is selected */}
+      {/* To Account - shown for INCOME / TRANSFER transactions or when Money Transfer is selected */}
       {showToAccount && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
